@@ -1,0 +1,184 @@
+{
+    "LayerManager": [
+        {
+            "layerName": "Layer1",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer2",
+            "style": {
+                "borderColor": "0xff00ff",
+                "borderLine": 3,
+                "fillColor": "0xffff7f",
+                "fillLine": 3
+            }
+        },
+        {
+            "layerName": "Layer3",
+            "style": {
+                "borderColor": "0xff557f",
+                "borderLine": 1,
+                "fillColor": "0xaa55ff",
+                "fillLine": 3
+            }
+        },
+        {
+            "layerName": "Layer4",
+            "style": {
+                "borderColor": "0x0055ff",
+                "borderLine": 3,
+                "fillColor": "0xff0000",
+                "fillLine": 3
+            }
+        },
+        {
+            "layerName": "Layer5",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x0000ff",
+                "fillLine": 1
+            }
+        },
+        {
+            "layerName": "Layer6",
+            "style": {
+                "borderColor": "0x0055ff",
+                "borderLine": 3,
+                "fillColor": "0xaa00ff",
+                "fillLine": 6
+            }
+        },
+        {
+            "layerName": "Layer7",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer8",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer9",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer10",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer11",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer12",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer13",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer14",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer15",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer16",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer17",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer18",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer19",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        },
+        {
+            "layerName": "Layer20",
+            "style": {
+                "borderColor": "0x00ff00",
+                "borderLine": 1,
+                "fillColor": "0x000000",
+                "fillLine": 5
+            }
+        }
+    ]
+}

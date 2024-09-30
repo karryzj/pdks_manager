@@ -1,0 +1,186 @@
+{
+    "primitive": {
+        "layers": [
+            {
+                "layerName": "Layer1",
+                "style": {
+                    "borderColor": "0x00ff00",
+                    "borderLine": 1,
+                    "fillColor": "0x000000",
+                    "fillLine": 5
+                }
+            },
+            {
+                "layerName": "Layer2",
+                "style": {
+                    "borderColor": "0xff00ff",
+                    "borderLine": 3,
+                    "fillColor": "0xffff7f",
+                    "fillLine": 3
+                }
+            }
+        ],
+        "param_rules": {
+            "params": [
+                {
+                    "key": "w",
+                    "value": 1,
+                    "desc": "width"
+                },
+                {
+                    "key": "h",
+                    "value": 1,
+                    "desc": "high"
+                }
+            ],
+            "rules": [
+                "x",
+                "x+y",
+                "x1*y1"
+            ]
+        },
+        "coord_anchor": {
+            "x": "w+h",
+            "y": 2,
+            "id": 2
+        },
+        "anchors": [
+            {
+                "x": 1,
+                "y": 2,
+                "id": 1
+            },
+            {
+                "x": 1,
+                "y": 2,
+                "id": 2
+            },
+            {
+                "x": 1,
+                "y": 2,
+                "id": 3
+            },
+            {
+                "x": 1,
+                "y": 2,
+                "id": 4
+            }
+        ],
+        "node": {
+            "id": 1,
+            "parent_attach_point_idx": -1,
+            "attach_points": [
+                {
+                    "x": 0,
+                    "y": 0,
+                    "is_coord_anchor": true,
+                    "is_anchor": true
+                }
+            ],
+            "children": [
+                {
+                    "id": 2,
+                    "parent_attach_point_idx": 0,
+                    "shape_name": "rect",
+                    "params": [
+                        {
+                            "key": "w",
+                            "value": 1,
+                            "desc": "width"
+                        },
+                        {
+                            "key": "h",
+                            "value": 1,
+                            "desc": "high"
+                        }
+                    ],
+                    "node_type": 1,
+                    "node_direction": 2,
+                    "layer": "Layer1",
+                    "attach_points": [
+                        {
+                            "id": 1,
+                            "x": 0,
+                            "y": "h",
+                            "is_coord_anchor": true,
+                            "is_anchor": true
+                        },
+                        {
+                            "id": 2,
+                            "x": 0,
+                            "y": 0,
+                            "is_coord_anchor": true,
+                            "is_anchor": false
+                        },
+                        {
+                            "id": 3,
+                            "x": "w",
+                            "y": 0,
+                            "is_coord_anchor": true,
+                            "is_anchor": true
+                        },
+                        {
+                            "id": 4,
+                            "x": "w",
+                            "y": "h",
+                            "is_coord_anchor": true,
+                            "is_anchor": false
+                        }
+                    ],
+                    "children": [
+                        {
+                            "id": 3,
+                            "parent_attach_point_idx": 0,
+                            "shape_name": "rect",
+                            "params": [
+                                {
+                                    "key": "w",
+                                    "value": 1,
+                                    "desc": "width"
+                                },
+                                {
+                                    "key": "h",
+                                    "value": 1,
+                                    "desc": "high"
+                                }
+                            ],
+                            "node_type": 1,
+                            "node_direction": 2,
+                            "layer": "Layer2",
+                            "attach_points": [
+                                {
+                                    "id": 1,
+                                    "x": 0,
+                                    "y": "h",
+                                    "is_coord_anchor": true,
+                                    "is_anchor": true
+                                },
+                                {
+                                    "id": 2,
+                                    "x": 0,
+                                    "y": 0,
+                                    "is_coord_anchor": true,
+                                    "is_anchor": false
+                                },
+                                {
+                                    "id": 3,
+                                    "x": "w",
+                                    "y": 0,
+                                    "is_coord_anchor": true,
+                                    "is_anchor": true
+                                },
+                                {
+                                    "id": 4,
+                                    "x": "w",
+                                    "y": "h",
+                                    "is_coord_anchor": true,
+                                    "is_anchor": false
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

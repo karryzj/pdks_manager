@@ -1,0 +1,47 @@
+<RCC>
+    <qresource prefix="/">
+        <file>img/7.png</file>
+        <file>img/8.png</file>
+        <file>img/9.png</file>
+        <file>img/10.png</file>
+        <file>img/11.png</file>
+        <file>img/12.png</file>
+        <file>img/13.png</file>
+        <file>img/14.png</file>
+        <file>img/15.png</file>
+        <file>img/circle.png</file>
+        <file>img/ellipse.png</file>
+        <file>img/favicon.png</file>
+        <file>img/lay_del.png</file>
+        <file>img/lay_import.png</file>
+        <file>img/lay_new.png</file>
+        <file>img/lay_redo.png</file>
+        <file>img/lay_save.png</file>
+        <file>img/lay_undo.png</file>
+        <file>img/quadrangle.png</file>
+        <file>img/rectangle.png</file>
+        <file>img/sector.png</file>
+        <file>img/triangle.png</file>
+        <file>img/polygen.png</file>
+        <file>img/left_align.png</file>
+        <file>img/right_align.png</file>
+        <file>img/top_align.png</file>
+        <file>img/bottom_align.png</file>
+        <file>img/ruler.png</file>
+        <file>img/add.png</file>
+        <file>img/close.png</file>
+        <file>img/edit.png</file>
+        <file>img/edit_drc.png</file>
+        <file>img/export_gds.png</file>
+        <file>img/pdk_logo.png</file>
+        <file>img/pdk_save.png</file>
+        <file>img/search.png</file>
+        <file>img/tc_pdk.png</file>
+        <file>img/tc_ty.png</file>
+        <file>img/ty_pdk.png</file>
+        <file>img/yj.png</file>
+        <file>img/yjfl.png</file>
+        <file>img/switch_gds.png</file>
+        <file>img/switch_pri.png</file>
+    </qresource>
+</RCC>
