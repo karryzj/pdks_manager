@@ -23,12 +23,15 @@ public:
 public:
     void set_new_position(const QPointF& pos);
     const QString& shape_name() const;
-    const ShapeDrawGraphicsItem* shape_item() const;
+    ShapeDrawGraphicsItem* shape_item() const;
     const QPointF& pos() const;
     QRectF boundingRect() const override;
 
     bool is_anchor_point() const;
     void set_anchor_point(bool is_anchor_point);
+
+    const QString& rotate_angle() const;
+    void set_rotate_angle(const QString& rotate_angle);
 
     bool is_coor_anchor_point() const;
     void set_coor_anchor_point(bool is_coor_anchor_point);
@@ -59,6 +62,9 @@ private:
     bool m_is_origin_point;
 
     bool m_is_anchor_point = false;
+
+    QString m_rotate_angle = "0";
+
     bool m_is_coor_anchor_point = false;
 
     struct MouseMoveInfo

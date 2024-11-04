@@ -72,7 +72,7 @@ void PrimitiveCoordinateUi::addCoordToTable(const QVariant &data)
     auto tree_node = dynamic_cast<at::AttachTreeNode*>(node_data.node_pointer);
     if(tree_node)
     {
-        exp_point = at::AttachTreeUtils::attach_exp_point(tree_node, node_data.point_idx_in_shape, true);
+        exp_point = at::AttachTreeUtils::attach_exp_point_coord(tree_node, node_data.point_idx_in_shape, true);
     }
 
     //添加新行
@@ -176,7 +176,7 @@ void PrimitiveCoordinateUi::update_table()
     auto tree_node = dynamic_cast<at::AttachTreeNode*>(node_data.node_pointer);
     if(tree_node)
     {
-        exp_point = at::AttachTreeUtils::attach_exp_point(tree_node, node_data.point_idx_in_shape, true);
+        exp_point = at::AttachTreeUtils::attach_exp_point_coord(tree_node, node_data.point_idx_in_shape, true);
     }
 
     //添加新行

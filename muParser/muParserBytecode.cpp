@@ -49,10 +49,13 @@ namespace mu
 {
 	/** \brief Bytecode default constructor. */
 	ParserByteCode::ParserByteCode()
-		:m_iStackPos(0)
+		: m_iStackPos(0)
+ 		, m_stringBuffer()
+		, m_expr()
 		, m_iMaxStackSize(0)
 		, m_vRPN()
 		, m_bEnableOptimizer(true)
+		, m_FinalResultIdx(0) //Parser modify
 	{
 		m_vRPN.reserve(50);
 	}
@@ -98,6 +101,10 @@ namespace mu
 		m_vRPN = a_ByteCode.m_vRPN;
 		m_iMaxStackSize = a_ByteCode.m_iMaxStackSize;
 		m_bEnableOptimizer = a_ByteCode.m_bEnableOptimizer;
+		
+		m_stringBuffer = a_ByteCode.m_stringBuffer;
+		m_expr = a_ByteCode.m_expr;
+		m_FinalResultIdx = a_ByteCode.m_FinalResultIdx; //Parser modify
 	}
 
 
@@ -114,6 +121,22 @@ namespace mu
 		SToken tok;
 		tok.Cmd = cmVAR;
 		tok.Val.ptr = a_pVar;
+		tok.Val.data = 1;
+		tok.Val.data2 = 0;
+		m_vRPN.push_back(tok);
+	}
+
+    //Parser modify
+	void ParserByteCode::AddFuncVar(value_type* a_pVar, int &Idx)
+	{
+		++m_iStackPos;
+		m_iMaxStackSize = std::max(m_iMaxStackSize, (size_t)m_iStackPos);
+
+		// optimization does not apply
+		SToken tok;
+		tok.Cmd = cmVAR;
+		tok.Val.ptr = a_pVar;
+		tok.Val.dataIdx = Idx;
 		tok.Val.data = 1;
 		tok.Val.data2 = 0;
 		m_vRPN.push_back(tok);
@@ -142,6 +165,7 @@ namespace mu
 		tok.Cmd = cmVAL;
 		tok.Val.ptr = nullptr;
 		tok.Val.data = 0;
+		tok.Val.dataIdx = 0; //Parser modify
 		tok.Val.data2 = a_fVal;
 		m_vRPN.push_back(tok);
 	}
@@ -259,6 +283,7 @@ namespace mu
 
 						m_vRPN[sz - 2].Cmd = cmVARMUL;
 						m_vRPN[sz - 2].Val.ptr = (value_type*)((long long)(m_vRPN[sz - 2].Val.ptr) | (long long)(m_vRPN[sz - 1].Val.ptr));    // variable
+						m_vRPN[sz - 2].Val.dataIdx = m_vRPN[sz - 1].Val.dataIdx + m_vRPN[sz - 2].Val.dataIdx; //Parser modify
 						m_vRPN[sz - 2].Val.data2 += ((a_Oprt == cmSUB) ? -1 : 1) * m_vRPN[sz - 1].Val.data2;  // offset
 						m_vRPN[sz - 2].Val.data += ((a_Oprt == cmSUB) ? -1 : 1) * m_vRPN[sz - 1].Val.data;   // multiplicand
 						m_vRPN.pop_back();
@@ -272,6 +297,7 @@ namespace mu
 					{
 						m_vRPN[sz - 2].Cmd = cmVARMUL;
 						m_vRPN[sz - 2].Val.ptr = (value_type*)((long long)(m_vRPN[sz - 2].Val.ptr) | (long long)(m_vRPN[sz - 1].Val.ptr));
+						m_vRPN[sz - 2].Val.dataIdx = m_vRPN[sz - 1].Val.dataIdx + m_vRPN[sz - 2].Val.dataIdx; //Parser modify
 						m_vRPN[sz - 2].Val.data = m_vRPN[sz - 2].Val.data2 + m_vRPN[sz - 1].Val.data2;
 						m_vRPN[sz - 2].Val.data2 = 0;
 						m_vRPN.pop_back();
@@ -283,6 +309,7 @@ namespace mu
 					{
 						// Optimization: 2*(3*b+1) or (3*b+1)*2 -> 6*b+2
 						m_vRPN[sz - 2].Cmd = cmVARMUL;
+						m_vRPN[sz - 2].Val.dataIdx = m_vRPN[sz - 1].Val.dataIdx + m_vRPN[sz - 2].Val.dataIdx; //Parser modify
 						m_vRPN[sz - 2].Val.ptr = (value_type*)((long long)(m_vRPN[sz - 2].Val.ptr) | (long long)(m_vRPN[sz - 1].Val.ptr));
 						if (m_vRPN[sz - 1].Cmd == cmVAL)
 						{
@@ -545,7 +572,7 @@ namespace mu
 
 
 	/** \brief Dump bytecode (for debugging only!). */
-	void ParserByteCode::AsciiDump()
+	void ParserByteCode::AsciiDump() const
 	{
 		if (!m_vRPN.size())
 		{
@@ -595,7 +622,7 @@ namespace mu
 			case cmFUNC_STR:
 				mu::console() << _T("CALL STRFUNC\t");
 				mu::console() << _T("[ARG:") << std::dec << m_vRPN[i].Fun.argc << _T("]");
-				mu::console() << _T("[IDX:") << std::dec << m_vRPN[i].Fun.idx << _T("]");
+				mu::console() << _T("[IDX:") << std::dec << m_vRPN[i].Fun.idx << _T("=\"") << m_stringBuffer[m_vRPN[i].Fun.idx] << ("\"]");
 				mu::console() << _T("[ADDR: 0x") << std::hex << reinterpret_cast<void*>(m_vRPN[i].Fun.cb._pRawFun) << _T("]");
 				mu::console() << _T("[USERDATA: 0x") << std::hex << reinterpret_cast<void*>(m_vRPN[i].Fun.cb._pUserData) << _T("]");
 				mu::console() << _T("\n");

@@ -3,6 +3,7 @@
 
 #include <QGraphicsEllipseItem>
 #include <QGraphicsScene>
+#include <QUndoStack>
 
 namespace cm
 {
@@ -34,7 +35,7 @@ public:
     void init();
     void set_ruler(double dbu, cm::Viewport *viewport);
     void toggle_ruler();
-
+    cm::Ruler * ruler() const;
 private:
     void keyPressEvent(QKeyEvent *event) override;
 

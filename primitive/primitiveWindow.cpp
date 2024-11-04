@@ -22,6 +22,8 @@
 #include <ShapePointGraphicsItem.h>
 #include <QTransform>
 #include <PriGraphicsScene.h>
+#include <QInputDialog>
+#include "PriMouseFollower.h"
 #include "PriTreeWidget.h"
 #include "layInfo.h"
 #include "priGraphicsView.h"
@@ -32,7 +34,10 @@
 #include "shapeDefines.h"
 #include "shapeFactory.h"
 #include "shapeDecl.h"
+#include <PriDockWidget.h>
+#include <PriGridResolutionDialog.h>
 #include <PriImportDialog.h>
+#include <PriRounedCornerDialog.h>
 #include <PriRulerDialog.h>
 #include <PriUtils.h>
 #include <QDragEnterEvent>
@@ -55,11 +60,14 @@
 #include "attachTreeUtils.h"
 #include "ruler.h"
 #include "qcursor.h"
-#include "redoService.h"
-#include "dbManager.h"
-#include "redoService.h"
+#include "commandManager.h"
+// #include "redoService.h"
 #include "common_defines.h"
 #include "scopeTimer.h"
+#include "configManager.h"
+#include "priTreeWidgetItem.h"
+#include "addCommand.h"
+#include "removeCommand.h"
 
 using namespace pr;
 using namespace at;
@@ -74,10 +82,10 @@ PrimitiveWindow::PrimitiveWindow(QWidget* parent, QString pri_name, bool new_cre
     at::AttachTreeUtils::set_scene(mp_graphics_scene);
 
     // 启用抗锯齿
-    mp_graphics_view->setRenderHint(QPainter::Antialiasing);
+    mp_graphics_view->setRenderHint(QPainter::Antialiasing, false);
 
     // 设置视图的渲染提示
-    mp_graphics_view->setRenderHint(QPainter::SmoothPixmapTransform);
+    mp_graphics_view->setRenderHint(QPainter::SmoothPixmapTransform, true);
 
     // 调整视图的变换模式
     mp_graphics_view->setTransformationAnchor(QGraphicsView::AnchorUnderMouse);
@@ -96,7 +104,7 @@ PrimitiveWindow::PrimitiveWindow(QWidget* parent, QString pri_name, bool new_cre
     mp_param_mgr = mp_pri->param_mgr();
     mp_graphics_scene->init();
 
-    cm::RedoService::instance()->mgr(new db::Manager());
+    // cm::RedoService::instance()->mgr(new db::Manager());
 
     QToolBar* general_tool_bar = addToolBar(PRI_GERNERAL_TOOL_BAR_NAME);
     general_tool_bar->setObjectName(PRI_GERNERAL_TOOL_BAR_NAME);
@@ -153,50 +161,50 @@ PrimitiveWindow::PrimitiveWindow(QWidget* parent, QString pri_name, bool new_cre
                                 // "    border-bottom-left-radius: 8px;" // 左上角圆角
                                 // "    border-bottom-right-radius: 8px;"// 右上角圆角
                                 "}";
-    QDockWidget* dock_widget_top = new QDockWidget(tr("图元树型结构"), this);
-    dock_widget_top->setStyleSheet(dock_widget_style);
+    mp_dock_widget_top = new PriDockWidget(tr("图元树型结构"), this);
+    mp_dock_widget_top->setStyleSheet(dock_widget_style);
     mp_pri_tree_widget = new pr::PriTreeWidget(mp_pri->at_root(), this);
-    dock_widget_top->setWidget(mp_pri_tree_widget);
-    addDockWidget(Qt::LeftDockWidgetArea, dock_widget_top);
+    mp_dock_widget_top->setWidget(mp_pri_tree_widget);
+    addDockWidget(Qt::LeftDockWidgetArea, mp_dock_widget_top);
 
     // 创建左侧下方框（Dock Widget）
     mp_layer_widget = new ly::LayerWidget(mp_pri->layer_mgr(), this);
-    QDockWidget* dock_widget_bottom = new QDockWidget(tr(PRI_LAYER_DOCK_WIDGET_NAME), this);
-    dock_widget_bottom->setObjectName(PRI_LAYER_DOCK_WIDGET_LIST_NAME);
-    dock_widget_bottom->setStyleSheet(dock_widget_style);
-    dock_widget_bottom->setWidget(mp_layer_widget);
-    addDockWidget(Qt::LeftDockWidgetArea, dock_widget_bottom);
+    mp_dock_widget_bottom = new PriDockWidget(tr(PRI_LAYER_DOCK_WIDGET_NAME), this);
+    mp_dock_widget_bottom->setObjectName(PRI_LAYER_DOCK_WIDGET_LIST_NAME);
+    mp_dock_widget_bottom->setStyleSheet(dock_widget_style);
+    mp_dock_widget_bottom->setWidget(mp_layer_widget);
+    addDockWidget(Qt::LeftDockWidgetArea, mp_dock_widget_bottom);
 
     // 将第二个框放置在第一个框下面
-    splitDockWidget(dock_widget_top, dock_widget_bottom, Qt::Vertical);
+    splitDockWidget(mp_dock_widget_top, mp_dock_widget_bottom, Qt::Vertical);
 
     // 创建第一个 Dock Widget
-    QDockWidget* param_list_dock = new QDockWidget(tr("参数列表"), this);
-    param_list_dock->setStyleSheet(dock_widget_style);
+    mp_param_list_dock = new PriDockWidget(tr("参数列表"), this);
+    mp_param_list_dock->setStyleSheet(dock_widget_style);
     mp_param_edit_widget = new pm::ParamEditWidget(mp_param_mgr);
-    param_list_dock->setWidget(mp_param_edit_widget);
-    addDockWidget(Qt::RightDockWidgetArea, param_list_dock);
+    mp_param_list_dock->setWidget(mp_param_edit_widget);
+    addDockWidget(Qt::RightDockWidgetArea, mp_param_list_dock);
 
     // 创建第二个 Dock Widget
-    QDockWidget* param_constraints_dock = new QDockWidget(tr("参数约束"), this);
-    param_constraints_dock->setStyleSheet(dock_widget_style);
+    mp_param_constraints_dock = new PriDockWidget(tr("参数约束"), this);
+    mp_param_constraints_dock->setStyleSheet(dock_widget_style);
     mp_param_rule_widget = new pm::ParamRuleWidget(mp_param_mgr);
-    param_constraints_dock->setWidget(mp_param_rule_widget);
-    addDockWidget(Qt::RightDockWidgetArea, param_constraints_dock);
+    mp_param_constraints_dock->setWidget(mp_param_rule_widget);
+    addDockWidget(Qt::RightDockWidgetArea, mp_param_constraints_dock);
 
     // 创建第三个 Dock Widget
     mp_coordinate_table = new pr::PrimitiveCoordinateUi(mp_pri->at_root());
-    QDockWidget* coord_anchor_dock = new QDockWidget(tr("坐标点"), this);
-    coord_anchor_dock->setStyleSheet(dock_widget_style);
-    coord_anchor_dock->setWidget(mp_coordinate_table);
-    addDockWidget(Qt::RightDockWidgetArea, coord_anchor_dock);
+    mp_coord_anchor_dock = new PriDockWidget(tr("坐标点"), this);
+    mp_coord_anchor_dock->setStyleSheet(dock_widget_style);
+    mp_coord_anchor_dock->setWidget(mp_coordinate_table);
+    addDockWidget(Qt::RightDockWidgetArea, mp_coord_anchor_dock);
 
     // 创建第四个 Dock Widget
-    mp_anchor_table = new pr::PrimitiveAnchorUi(mp_pri);
-    QDockWidget* anchor_dock = new QDockWidget(tr("锚点"), this);
-    anchor_dock->setStyleSheet(dock_widget_style);
-    anchor_dock->setWidget(mp_anchor_table);
-    addDockWidget(Qt::RightDockWidgetArea, anchor_dock);
+    mp_anchor_table = new pr::PrimitiveAnchorUi(mp_pri, nullptr);
+    mp_anchor_dock = new PriDockWidget(tr("锚点"), this);
+    mp_anchor_dock->setStyleSheet(dock_widget_style);
+    mp_anchor_dock->setWidget(mp_anchor_table);
+    addDockWidget(Qt::RightDockWidgetArea, mp_anchor_dock);
 
     // 设置中央小部件
     setCentralWidget(mp_graphics_view);
@@ -234,10 +242,13 @@ PrimitiveWindow::PrimitiveWindow(QWidget* parent, QString pri_name, bool new_cre
     {
         fill_tree_node();
     }
+
+    mp_graphics_scene->addItem(&m_preview_polygen);
 }
 
 PrimitiveWindow::~PrimitiveWindow()
 {
+    mp_graphics_scene->removeItem(&m_preview_polygen);
     clear_cache();
     remove_connects();
 
@@ -282,8 +293,6 @@ void PrimitiveWindow::connect_new_tree_node(at::AttachTreeNode* new_tree_node)
             Q_ASSERT(succeed);
         }
         new_tree_node->set_connect_with_mw(true);
-        // 更新
-        mp_pri_tree_widget->update_tree();
     }
 }
 
@@ -354,19 +363,12 @@ void PrimitiveWindow::adjust_mouse_position(const QPointF &scenePos)
 
 void PrimitiveWindow::resizeEvent(QResizeEvent* event)
 {
-    // 设置scene rect
-    QRect view_rect = mp_graphics_view->geometry();
-    mp_graphics_view->scene()->setSceneRect(0, 0, view_rect.width(), view_rect.height());
-
-    // 设置viewport
-    mp_pri->tree_node_mgr()->viewport()->set_size(view_rect.width(), view_rect.height());
+    match_viewport();
 }
 
 void PrimitiveWindow::keyPressEvent(QKeyEvent *event)
 {
-    QMainWindow::keyPressEvent(event);
-
-    cm::RedoService::instance()->keyPressEvent(event);
+    // cm::RedoService::instance()->keyPressEvent(event);
 
     if(event->key() == Qt::Key_F)
     {
@@ -391,15 +393,16 @@ void PrimitiveWindow::keyPressEvent(QKeyEvent *event)
             setCursor(Qt::ArrowCursor);
         }
     }
+    QMainWindow::keyPressEvent(event);
 }
 
 void PrimitiveWindow::keyReleaseEvent(QKeyEvent *event)
 {
-    QMainWindow::keyReleaseEvent(event);
     if (event->key() == Qt::Key_Shift)
     {
         m_is_shift_pressed = false;
     }
+    QMainWindow::keyReleaseEvent(event);
 }
 
 void PrimitiveWindow::paintEvent(QPaintEvent *event)
@@ -413,6 +416,7 @@ void PrimitiveWindow::paintEvent(QPaintEvent *event)
         {
             QPointF point_in_scence = mp_pri->tree_node_mgr()->viewport()->map_to_scene(info.first);
             info.second->set_new_position(point_in_scence);
+            PriUtils::modify_preview_polygen_by_points(m_chosen_coord_points, mp_pri, m_preview_polygen);
         }
     }
 }
@@ -448,8 +452,12 @@ void PrimitiveWindow::closeEvent(QCloseEvent *event)
 
 void PrimitiveWindow::init_general_actions()
 {
-    QAction* undo_action = new QAction(QIcon(":/img/lay_undo.png"), tr(PRI_UNDO_ACTION_NAME), this);
-    QAction* redo_action = new QAction(QIcon(":/img/lay_redo.png"), tr(PRI_REDO_ACTION_NAME), this);
+    QAction* undo_action = cmd::CommandManager::instance()->undo_stack().createUndoAction(this, tr(PRI_UNDO_ACTION_NAME));
+    undo_action->setIcon(QIcon(":/img/lay_undo.png"));
+    undo_action->setShortcut(QKeySequence::Undo);
+    QAction* redo_action = cmd::CommandManager::instance()->undo_stack().createRedoAction(this, tr(PRI_REDO_ACTION_NAME));
+    redo_action->setIcon(QIcon(":/img/lay_redo.png"));
+    redo_action->setShortcut(QKeySequence::Redo);
     QAction* import_action = new QAction(QIcon(":/img/lay_import.png"), tr(PRI_IMPORT_ACTION_NAME), this);
     QAction* save_action = new QAction(QIcon(":/img/lay_save.png"), tr(PRI_SAVE_ACTION_NAME), this);
     save_action->setShortcut(QKeySequence("Ctrl+S"));
@@ -553,10 +561,47 @@ void PrimitiveWindow::init_function_actions()
     // 测距功能
     auto ruler_action = function_tool_bar->addAction(PRI_RULER_ACTION_NAME);
     icon_path = ":/img/" + QString(PRI_RULER_ACTION_NAME) + ".png";
-    QIcon icon_left(icon_path);
-    ruler_action->setIcon(icon_left);
+    QIcon icon_ruler(icon_path);
+    ruler_action->setIcon(icon_ruler);
     succeed = connect(ruler_action, & QAction::triggered, this, &PrimitiveWindow::rule_2_points_distance);
     Q_ASSERT(succeed);
+
+    auto grid_resolution_action = function_tool_bar->addAction(PRI_GRID_RESOLUTION_ACTION_NAME);
+    icon_path = ":/img/" + QString(PRI_GRID_RESOLUTION_ACTION_NAME) + ".png";
+    QIcon icon_grid_resolution(icon_path);
+    grid_resolution_action->setIcon(icon_grid_resolution);
+    succeed = connect(grid_resolution_action, & QAction::triggered, this, &PrimitiveWindow::setup_current_grid_resolution);
+    Q_ASSERT(succeed);
+    {
+        QString resolution = QString::number(PRI_GRID_RESOLUTION_DEFAULT_VALUE);
+        grid_resolution_action->setObjectName(PRI_GRID_RESOLUTION_ACTION_NAME);
+        grid_resolution_action->setText(resolution);
+        cm::ConfigManager::instance()->register_new_config(CM_LOGIC_GRID_RESOLUTION_KEY, PRI_GRID_RESOLUTION_DEFAULT_VALUE);
+    }
+
+    // 弧长设置
+    auto arc_len_action = function_tool_bar->addAction(PRI_ARC_LEN_ACTION_NAME);
+    icon_path = ":/img/" + QString(PRI_RULER_ACTION_NAME) + ".png";  // HINT@leixunyong。这里的弧长图标有问题。
+    QIcon icon_arc(icon_path);
+    arc_len_action->setIcon(icon_arc);
+    succeed = connect(arc_len_action, & QAction::triggered, this, &PrimitiveWindow::set_arc_length);
+    Q_ASSERT(succeed);
+    {
+        cm::ConfigManager::instance()->register_new_config(CM_ARC_LEN_KEY, CM_ARC_LEN_DEFAULT_VALUE);
+    }
+
+    // 圆角设置
+    auto rounded_corner_action = function_tool_bar->addAction("rounded corner");
+    icon_path = ":/img/" + QString(PRI_ROUNDED_CORNER_ACTION_NAME) + ".png";
+    QIcon icon_rounded_corner(icon_path);
+    rounded_corner_action->setIcon(icon_rounded_corner);
+    succeed = connect(rounded_corner_action, & QAction::triggered, this, &PrimitiveWindow::set_rounded_corner_params);
+    Q_ASSERT(succeed);
+    {
+        cm::ConfigManager::instance()->register_new_config(CM_INNER_CORNER_RADIUS_KEY, CM_INNER_CORNER_RADIUS_DEFAULT_VALUE);
+        cm::ConfigManager::instance()->register_new_config(CM_OUTER_CORNER_RADIUS_KEY, CM_OUTER_CORNER_RADIUS_DEFAULT_VALUE);
+        cm::ConfigManager::instance()->register_new_config(CM_OUTER_CORNER_DIRECTION_KEY, CM_OUTER_CORNER_DIRECTION_DEFAULT_VALUE);
+    }
 }
 
 void pr::PrimitiveWindow::init_keyboard_shortcuts()
@@ -573,6 +618,14 @@ void pr::PrimitiveWindow::init_keyboard_shortcuts()
 
     QShortcut *short_cut_ctrl_v = new QShortcut(QKeySequence("Ctrl+V"), this);
     succeed = connect(short_cut_ctrl_v, &QShortcut::activated, this->mp_pri_tree_widget->tree_widge_menu(), &PriTreeWidgetMenu::paste_cut_or_copied_tree_node_info);
+    Q_ASSERT(succeed);
+
+    QShortcut *short_cut_ctrl_i = new QShortcut(QKeySequence(Qt::Key_I), this);
+    succeed = connect(short_cut_ctrl_i, &QShortcut::activated, this, &PrimitiveWindow::add_inner_rounded_corner_for_shape);
+    Q_ASSERT(succeed);
+
+    QShortcut *short_cut_ctrl_o = new QShortcut(QKeySequence(Qt::Key_O), this);
+    succeed = connect(short_cut_ctrl_o, &QShortcut::activated, this, &PrimitiveWindow::add_outer_rounded_corner_for_shape);
     Q_ASSERT(succeed);
 
     // HINT@leixunyong。后续快捷键都可以继续往下添加。
@@ -603,7 +656,7 @@ void PrimitiveWindow::set_connects()
 
         // 连接scene删除treenode到锚点列表的槽函数
         succeed = connect(mp_graphics_scene, & pr::PriGraphicsScene::before_delete_tree_node, mp_anchor_table,
-                          & pr::PrimitiveAnchorUi::onDeleteNode);
+                          & pr::PrimitiveAnchorUi::on_delete_node);
         Q_ASSERT(succeed);
         // 连接scene删除treenode到坐标点列表的槽函数
         succeed = connect(mp_graphics_scene, & pr::PriGraphicsScene::before_delete_tree_node, mp_coordinate_table,
@@ -623,14 +676,11 @@ void PrimitiveWindow::set_connects()
 
         // 连接图元树右键选项到锚点表的槽函数
         succeed = connect(mp_pri_tree_widget->tree_widge_menu(), & pr::PriTreeWidgetMenu::signal_anchor_action_triggered, mp_anchor_table,
-                          & pr::PrimitiveAnchorUi::addAnchorToTable);
+                          & pr::PrimitiveAnchorUi::add_anchor_to_table);
         Q_ASSERT(succeed);
         // 连接图元树右键选项到坐标点表的槽函数
         succeed = connect(mp_pri_tree_widget->tree_widge_menu(), & pr::PriTreeWidgetMenu::signal_coord_action_triggered, mp_coordinate_table,
                           & pr::PrimitiveCoordinateUi::addCoordToTable);
-        Q_ASSERT(succeed);
-
-        succeed = connect(dynamic_cast<PriAttachTreeNodeMgr*>(mp_pri->tree_node_mgr()), &PriAttachTreeNodeMgr::update_anchor, mp_anchor_table, &PrimitiveAnchorUi::update_table);
         Q_ASSERT(succeed);
 
         succeed = connect(this, &PrimitiveWindow::scene_selection_changed_to_tree, mp_pri_tree_widget, &PriTreeWidget::onSceneSelectionChanged);
@@ -639,11 +689,11 @@ void PrimitiveWindow::set_connects()
         succeed = connect(mp_param_edit_widget, &pm::ParamEditWidget::param_changed, this, &PrimitiveWindow::update_current_primitive);
         Q_ASSERT(succeed);
 
-        succeed = connect(this, &PrimitiveWindow::add_new_param_for_polygen, mp_param_edit_widget, &pm::ParamEditWidget::on_add_new_expressison);
-        Q_ASSERT(succeed);
-
         // auto conn_ret = connect(mp_layer_widget, &ly::LayerWidget::layer_changed, this, &PrimitiveWindow::update_current_primitive);
         succeed = connect(mp_layer_widget, SIGNAL(layer_changed()), this, SLOT(update_current_primitive()));
+        Q_ASSERT(succeed);
+
+        succeed = connect(mp_layer_widget, &ly::LayerWidget::delete_layer_info, this, &PrimitiveWindow::delete_tree_nodes_with_layer_info);
         Q_ASSERT(succeed);
 
         // view changed
@@ -660,6 +710,25 @@ void PrimitiveWindow::set_connects()
 
         succeed = connect(mp_graphics_scene, & pr::PriGraphicsScene ::before_delete_tree_node, mp_pri_tree_widget->tree_widge_menu(),
                           & pr::PriTreeWidgetMenu::on_before_tree_node);
+        Q_ASSERT(succeed);
+
+        succeed = connect(mp_dock_widget_top, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
+
+        succeed = connect(mp_dock_widget_bottom, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
+
+        succeed = connect(mp_param_list_dock, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
+
+        succeed = connect(mp_param_constraints_dock, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
+
+        succeed = connect(mp_coord_anchor_dock, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
+
+        succeed = connect(mp_anchor_dock, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
 
         m_has_connects = true;
     }
@@ -690,7 +759,7 @@ void PrimitiveWindow::remove_connects()
 
         // 连接scene删除treenode到锚点列表的槽函数
         succeed = disconnect(mp_graphics_scene, & pr::PriGraphicsScene::before_delete_tree_node, mp_anchor_table,
-                             & pr::PrimitiveAnchorUi::onDeleteNode);
+                             & pr::PrimitiveAnchorUi::on_delete_node);
         Q_ASSERT(succeed);
         // 连接scene删除treenode到坐标点列表的槽函数
         succeed = disconnect(mp_graphics_scene, & pr::PriGraphicsScene::before_delete_tree_node, mp_coordinate_table,
@@ -710,14 +779,11 @@ void PrimitiveWindow::remove_connects()
 
         // 连接图元树右键选项到锚点表的槽函数
         succeed = disconnect(mp_pri_tree_widget->tree_widge_menu(), & pr::PriTreeWidgetMenu::signal_anchor_action_triggered, mp_anchor_table,
-                             & pr::PrimitiveAnchorUi::addAnchorToTable);
+                             & pr::PrimitiveAnchorUi::add_anchor_to_table);
         Q_ASSERT(succeed);
         // 连接图元树右键选项到坐标点表的槽函数
         succeed = disconnect(mp_pri_tree_widget->tree_widge_menu(), & pr::PriTreeWidgetMenu::signal_coord_action_triggered, mp_coordinate_table,
                              & pr::PrimitiveCoordinateUi::addCoordToTable);
-        Q_ASSERT(succeed);
-
-        succeed = disconnect(dynamic_cast<PriAttachTreeNodeMgr*>(mp_pri->tree_node_mgr()), &PriAttachTreeNodeMgr::update_anchor, mp_anchor_table, &PrimitiveAnchorUi::update_table);
         Q_ASSERT(succeed);
 
         succeed = disconnect(this, &PrimitiveWindow::scene_selection_changed_to_tree, mp_pri_tree_widget, &PriTreeWidget::onSceneSelectionChanged);
@@ -726,11 +792,11 @@ void PrimitiveWindow::remove_connects()
         succeed = disconnect(mp_param_edit_widget, &pm::ParamEditWidget::param_changed, this, &PrimitiveWindow::update_current_primitive);
         Q_ASSERT(succeed);
 
-        succeed = disconnect(this, &PrimitiveWindow::add_new_param_for_polygen, mp_param_edit_widget, &pm::ParamEditWidget::on_add_new_expressison);
-        Q_ASSERT(succeed);
-
         // auto conn_ret = connect(mp_layer_widget, &ly::LayerWidget::layer_changed, this, &PrimitiveWindow::update_current_primitive);
         succeed = disconnect(mp_layer_widget, SIGNAL(layer_changed()), this, SLOT(update_current_primitive()));
+        Q_ASSERT(succeed);
+
+        succeed = disconnect(mp_layer_widget, &ly::LayerWidget::delete_layer_info, this, &PrimitiveWindow::delete_tree_nodes_with_layer_info);
         Q_ASSERT(succeed);
 
         // view changed
@@ -747,15 +813,34 @@ void PrimitiveWindow::remove_connects()
                              & pr::PriTreeWidgetMenu::on_before_tree_node);
         Q_ASSERT(succeed);
 
+        succeed = disconnect(mp_dock_widget_top, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
+
+        succeed = disconnect(mp_dock_widget_bottom, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
+
+        succeed = disconnect(mp_param_list_dock, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
+
+        succeed = disconnect(mp_param_constraints_dock, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
+
+        succeed = disconnect(mp_coord_anchor_dock, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
+
+        succeed = disconnect(mp_anchor_dock, &PriDockWidget::dock_widget_resize, this, &PrimitiveWindow::on_dock_widget_resize);
+        Q_ASSERT(succeed);
+
         m_has_connects = false;
     }
 }
 
-void PrimitiveWindow::add_new_tree_node(const QString &shape_name,
-                                        const QVector<pm::ParamDecl> &params,
-                                        at::NodeType node_type,
-                                        at::NodeDirection node_direction,
-                                        ly::LayerInfo *layer_info)
+at::AttachTreeNode* PrimitiveWindow::add_new_tree_node(const QString &shape_name,
+        const QVector<pm::ParamDecl> &params,
+        at::NodeType node_type,
+        at::NodeDirection node_direction,
+        at::NodeBooleanSubtractType node_boolean_subtract_type,
+        ly::LayerInfo *layer_info)
 {
     at::AttachTreeBaseNode* parent_node = nullptr;
     int parent_attach_point_idx = -1;
@@ -787,10 +872,12 @@ void PrimitiveWindow::add_new_tree_node(const QString &shape_name,
                                         params,
                                         node_type,
                                         node_direction,
+                                        node_boolean_subtract_type,
                                         layer_info);
     emit mp_pri->signal_add_new_tree();
     new_tree_node->update();
     mp_pri->tree_node_mgr()->update();
+    return new_tree_node;
 }
 
 void PrimitiveWindow::newly_draw_shape_dialog()
@@ -862,35 +949,36 @@ void PrimitiveWindow::newly_draw_shape_dialog()
             mp_graphics_scene->removeItem(point_item);
         }
         m_chosen_coord_points.clear();
+        m_preview_polygen.setPolygon(QPolygonF{});
     }
     PriShapeDialog * dialog = dynamic_cast<PriShapeAction * >(action)->ui_form();
+    bool succeed = connect(dialog, &PriShapeDialog::add_new_param_to_param_mgr, mp_param_edit_widget, &pm::ParamEditWidget::on_add_new_expressison);
+    Q_ASSERT(succeed);
+
     dialog->init_ui_in_create_shape();
     int exec_case = dialog->exec();
     if (exec_case == QDialog::DialogCode::Accepted)
     {
         auto shape_node_type = dialog->shape_node_type();
         auto shape_node_direction = dialog->shape_node_direction();
+        auto shape_node_boolean_subtract_type = dialog->shape_node_boolean_subtract_type();
         auto shape_layer_info_name = dialog->shape_layer_info_name();
         ly::LayerInfo* shape_layer_info = mp_pri->layer_mgr()->get_layer_info_by_name(
                                               shape_layer_info_name);  // 找到图层信息
         auto param_list = dialog->shape_param_list();
 
-        if(action->objectName() == SHAPE_POLYGEN)
-        {
-            if(dialog->is_extract_params())
-            {
-                process_polygen_params(param_list, nullptr);
-            }
-        }
-
-        add_new_tree_node(action->objectName(), param_list, shape_node_type, shape_node_direction, shape_layer_info);
+        auto tree_node = add_new_tree_node(action->objectName(), param_list, shape_node_type, shape_node_direction, shape_node_boolean_subtract_type, shape_layer_info);
         dialog->accept();
+        mp_pri->tree_node_mgr()->update();
+        cmd::CommandManager::instance()->push(new cmd::AddCommand(tree_node));
     }
     else if (exec_case == QDialog::DialogCode::Rejected)
     {
         dialog->reject();
     }
 
+    succeed = disconnect(dialog, &PriShapeDialog::add_new_param_to_param_mgr, mp_param_edit_widget, &pm::ParamEditWidget::on_add_new_expressison);
+    Q_ASSERT(succeed);
 }
 
 void PrimitiveWindow::edit_draw_shape_dialog(sp::ShapeDrawGraphicsItem* item)
@@ -903,26 +991,21 @@ void PrimitiveWindow::edit_draw_shape_dialog(sp::ShapeDrawGraphicsItem* item)
     Q_ASSERT(action);
 
     PriShapeDialog* dialog = dynamic_cast<PriShapeAction*>(action)->ui_form();
+    bool succeed = connect(dialog, &PriShapeDialog::add_new_param_to_param_mgr, mp_param_edit_widget, &pm::ParamEditWidget::on_add_new_expressison);
+    Q_ASSERT(succeed);
     dialog->init_ui_in_edit_shape(item);
     int exec_case = dialog->exec();
     if (exec_case == QDialog::DialogCode::Accepted)
     {
-        cm::RedoService::instance()->transaction();
+        // cm::RedoService::instance()->transaction();
 
         auto shape_node_type = dialog->shape_node_type();
         auto shape_node_direction = dialog->shape_node_direction();
+        auto shape_node_boolean_subtract_type = dialog->shape_node_boolean_subtract_type();
         auto shape_layer_info_name = dialog->shape_layer_info_name();
         ly::LayerInfo* shape_layer_info = mp_pri->layer_mgr()->get_layer_info_by_name(
                                               shape_layer_info_name);  // 找到图层信息
         auto param_list = dialog->shape_param_list();
-
-        if(action->objectName() == SHAPE_POLYGEN)
-        {
-            if(dialog->is_extract_params())
-            {
-                process_polygen_params(param_list, dialog->editing_tree_node());
-            }
-        }
 
         at::AttachTreeNode* tree_node = at::AttachTreeUtils::attach_tree_node_shape_item_in(item, mp_pri->at_root());
         if (tree_node->node_type() != shape_node_type)   // 判断一下再设置是为了减少无端的性能损耗，下同
@@ -935,6 +1018,11 @@ void PrimitiveWindow::edit_draw_shape_dialog(sp::ShapeDrawGraphicsItem* item)
             tree_node->set_node_direction(shape_node_direction);
         }
 
+        if (tree_node->node_boolean_subtract_type() != shape_node_boolean_subtract_type)
+        {
+            tree_node->set_node_boolean_subtract_type(shape_node_boolean_subtract_type);
+        }
+
         if (tree_node->layer_info() != shape_layer_info)
         {
             tree_node->set_layer_info(shape_layer_info);
@@ -942,17 +1030,20 @@ void PrimitiveWindow::edit_draw_shape_dialog(sp::ShapeDrawGraphicsItem* item)
         tree_node->set_params(param_list);
 
         dialog->accept();
-
-        cm::RedoService::instance()->commit();
+        mp_pri->tree_node_mgr()->update();
+        // cm::RedoService::instance()->commit();
     }
     else if (exec_case == QDialog::DialogCode::Rejected)
     {
         dialog->reject();
     }
+    succeed = disconnect(dialog, &PriShapeDialog::add_new_param_to_param_mgr, mp_param_edit_widget, &pm::ParamEditWidget::on_add_new_expressison);
+    Q_ASSERT(succeed);
 }
 
 void PrimitiveWindow::save_json()
 {
+    mp_anchor_table->save_anchors_to_primitive();
     auto save_case = mp_pri->save();
     if(save_case == 0)
     {
@@ -989,54 +1080,17 @@ void PrimitiveWindow::on_view_changed()
     mp_graphics_scene->set_ruler(mp_pri->dbu(), mp_pri->tree_node_mgr()->viewport());
 }
 
-void PrimitiveWindow::process_polygen_params(QVector<pm::ParamDecl> &param_list, at::AttachTreeNode* tree_node)
+void PrimitiveWindow::match_viewport()
 {
-    int next_node_id = (tree_node ? tree_node->id() : mp_pri->tree_node_mgr()->id_number() + 1);
-
-    auto params = param_list;
-    auto first_param = param_list[0];
-    params.remove(0);
-
-    auto result_params = PriUtils::organize_and_eliminate_params(params, next_node_id);
-    for(auto idx = 0; idx < result_params.size(); idx++)
+    // 设置scene rect
+    QRect view_rect = mp_graphics_view->geometry();
+    if( view_rect.width() > view_rect.height())
     {
-        const auto& result_param = result_params[idx];
-        // 把参数逐一加入参数管理器
-        auto result_expression = result_param.expression();
-        QStringList list = result_expression.split('+');  // 使用 '+' 作为分隔符分割字符串
-        for(const auto& param_expression : list)
-        {
-            if(pm::Expression::is_num(param_expression))
-            {
-                continue;
-            }
+        mp_graphics_view->scene()->setSceneRect(0, 0, view_rect.width(), view_rect.height());
 
-            if(nullptr != mp_pri->param_mgr()->find_param(param_expression))
-            {
-                continue;
-            }
-            // 能走到这里来一定是能够匹配上的
-            qreal exp_value = result_param.value();
-            if(idx >= 2)
-            {
-                exp_value = exp_value - result_params[idx - 2].value();
-            }
-
-            emit add_new_param_for_polygen(param_expression, QString::number(exp_value), "");
-        }
-
-        for(auto& param : param_list)
-        {
-            if(result_param.key() == param.key())
-            {
-                param = result_param;
-                break;
-            }
-        }
+        // 设置viewport
+        mp_pri->tree_node_mgr()->viewport()->set_size(view_rect.width(), view_rect.height());
     }
-    mp_pri->param_mgr()->refresh_params_value();
-    result_params.insert(0, first_param);
-    param_list = result_params;
 }
 
 void PrimitiveWindow::save_img()
@@ -1085,18 +1139,22 @@ void PrimitiveWindow::save()
 void PrimitiveWindow::load_json()
 {
     PriImportDialog dialog(mp_pri);
-    dialog.exec();
-    emit mp_pri->signal_add_new_tree();
+    auto return_value = dialog.exec();
+    if(return_value == QDialog::Accepted)
+    {
+        emit mp_pri->signal_add_new_tree();
 
-    mp_layer_widget->update_all_items();
-    mp_param_edit_widget->update_all_items();
-    mp_param_rule_widget->update_all_items();
-    mp_coordinate_table->update_table();
-    mp_anchor_table->update_table();
+        mp_layer_widget->update_all_items();
+        mp_param_edit_widget->update_all_items();
+        mp_param_rule_widget->update_all_items();
+        mp_coordinate_table->update_table();
+        mp_anchor_table->update_table();
+    }
 }
 
 void PrimitiveWindow::after_delete_tree_node()
 {
+    mp_graphics_view->drag_box()->set_tree_node(nullptr);
     mp_pri_tree_widget->update_tree();
 }
 
@@ -1110,7 +1168,9 @@ void PrimitiveWindow::add_dragged_rectangle_info(sp::ShapePointGraphicsItem *poi
 {
     // 先纠正起点和终点的位置
     auto start_point = mp_pri->tree_node_mgr() ->viewport()->map_from_scene(point_item->pos());
-    end_point = mp_pri->tree_node_mgr()->viewport()->map_from_scene(end_point);
+
+    // 移动到最近的格点
+    end_point = PriUtils::closest_grid_point(end_point, mp_pri->at_root());
 
     // 确定node type
     NodeType node_type = NodeType::LOCATION;
@@ -1183,7 +1243,7 @@ void PrimitiveWindow::add_dragged_rectangle_info(sp::ShapePointGraphicsItem *poi
         }
         params.push_back(new_param);
     }
-    add_new_tree_node(SHAPE_RECTANGLE, params, node_type, node_direction, layer_info);
+    add_new_tree_node(SHAPE_RECTANGLE, params, node_type, node_direction, NodeBooleanSubtractType::NONE, layer_info);
 }
 
 void PrimitiveWindow::update_current_primitive()
@@ -1191,14 +1251,69 @@ void PrimitiveWindow::update_current_primitive()
     mp_pri->tree_node_mgr()->update();
 }
 
+void PrimitiveWindow::delete_tree_nodes_with_layer_info(ly::LayerInfo *layer_info)
+{
+    if(nullptr == layer_info)
+    {
+        return;
+    }
+
+    auto root_node = mp_pri->at_root();
+    if(root_node->children().size() != 1)
+    {
+        return;
+    }
+
+    QVector<AttachTreeNode*> ready_check_tree_nodes = root_node->children()[0];
+
+    while(!ready_check_tree_nodes.empty())
+    {
+        bool find_tree_node = false;
+        QVector<AttachTreeNode*> next_check_tree_nodes;
+        for(auto tree_node : ready_check_tree_nodes)
+        {
+            auto this_tree_node_layer = tree_node->layer_info() ;
+            if(this_tree_node_layer->layer_name() == layer_info->layer_name())
+            {
+                ready_check_tree_nodes.removeOne(tree_node);
+                tree_node->parent_node()->remove_child(tree_node);
+                delete tree_node;
+                find_tree_node = true;
+                break;
+            }
+            else
+            {
+                const auto& children =  tree_node->children();
+                for(auto itor = children.begin(); itor != children.end(); itor++)
+                {
+                    const auto& tree_nodes = itor.value();
+                    next_check_tree_nodes.append(tree_nodes);
+                }
+            }
+        }
+
+        if(!find_tree_node)
+        {
+            qSwap( next_check_tree_nodes, ready_check_tree_nodes);
+        }
+    }
+
+    mp_pri_tree_widget->update_tree();
+    return;
+}
+
 void PrimitiveWindow::record_mouse_left_button_click_point(const QPoint &pos)
 {
     // HINT@leixunyong。pos是留给后面使用的。
     if(m_is_recording)
     {
-        ShapePointGraphicsItem* point_item = new ShapePointGraphicsItem(mp_pri->tree_node_mgr()->viewport()->map_to_scene(current_scene_pos()), nullptr, 0);
+        // 调整场景坐标
+        QPointF logic_pos = current_scene_pos();
+        QPointF adjusted_logic_pos = PriUtils::closest_grid_point(logic_pos, mp_pri->at_root(), true);
+
+        ShapePointGraphicsItem* point_item = new ShapePointGraphicsItem(mp_pri->tree_node_mgr()->viewport()->map_to_scene(adjusted_logic_pos), nullptr, 0);
         mp_graphics_scene->addItem(point_item);
-        QPointF curent_pos = current_scene_pos();   // HINT@leixunyong。这个坐标不一定准确，因此需要更正
+        QPointF curent_pos = adjusted_logic_pos;   // HINT@leixunyong。这个坐标不一定准确，因此需要更正
         if(m_is_shift_pressed)
         {
             QPointF last_point;
@@ -1223,6 +1338,7 @@ void PrimitiveWindow::record_mouse_left_button_click_point(const QPoint &pos)
 
         QPair<QPointF, sp::ShapePointGraphicsItem*> new_value = {curent_pos, point_item};
         m_chosen_coord_points.push_back(new_value);
+        PriUtils::modify_preview_polygen_by_points(m_chosen_coord_points, mp_pri, m_preview_polygen);
     }
     update();
 }
@@ -1244,6 +1360,18 @@ void PrimitiveWindow::rule_2_points_distance()
     mp_ruler_dialog = new PriRulerDialog(mp_pri, mp_graphics_view);
 }
 
+void PrimitiveWindow::setup_current_grid_resolution()
+{
+    QToolBar* function_tool_bar = findChild<QToolBar*>(PRI_FUNCTION_TOOL_BAR_NAME);
+    Q_ASSERT(function_tool_bar);
+
+    auto grid_resolution_action = function_tool_bar->findChild<QAction*> (PRI_GRID_RESOLUTION_ACTION_NAME);
+    Q_ASSERT(grid_resolution_action);
+
+    PriGridResolutionDialog dialog(grid_resolution_action);
+    dialog.exec();
+}
+
 void PrimitiveWindow::cancel_current_operations()
 {
     // 取消多边形 action
@@ -1260,6 +1388,7 @@ void PrimitiveWindow::cancel_current_operations()
             auto pair = m_chosen_coord_points[0];
             mp_graphics_scene->removeItem(pair.second);
             m_chosen_coord_points.remove(0);
+            m_preview_polygen.setPolygon(QPolygonF{});
         }
 
         setCursor(Qt::ArrowCursor);
@@ -1279,7 +1408,7 @@ void PrimitiveWindow::finish_pickup_polygen_point()
 
 void PrimitiveWindow::connect_tree_node_with_mw()
 {
-    // TODO@leixunyong 临时代码
+    //TODO@leixunyong 临时代码
     std::function<void(at::AttachTreeNode*)> func;
     func = [&] (at::AttachTreeNode* tree_node)
     {
@@ -1302,17 +1431,191 @@ void PrimitiveWindow::connect_tree_node_with_mw()
         {
             func(tree_node);
         }
+        // 更新
+        mp_pri_tree_widget->update_tree();
     }
 }
 
 void PrimitiveWindow::redo()
 {
-    cm::RedoService::instance()->redo();
+    cmd::CommandManager::instance()->redo();
 }
 
 void PrimitiveWindow::undo()
 {
-    cm::RedoService::instance()->undo();
+    cmd::CommandManager::instance()->undo();
+}
+
+void PrimitiveWindow::set_arc_length()
+{
+    bool ok = false;
+    qreal arc_len = cm::ConfigManager::instance()->query(CM_ARC_LEN_KEY).toDouble();
+    QString input =  QString::number(arc_len);
+
+    QString text = QInputDialog::getText(nullptr, tr("设置弧长"), tr("弧长(um):"), QLineEdit::Normal, input, &ok);
+    if (ok && !text.remove(' ').isEmpty())
+    {
+        qreal arc_len = text.toDouble(&ok);
+        if(false == ok || arc_len < 0.001)
+        {
+            QMessageBox::warning(nullptr, "Warning", "your input is invalid!");
+        }
+        else
+        {
+            cm::ConfigManager::instance()->setup_value(CM_ARC_LEN_KEY, arc_len);
+            mp_pri->at_root()->update();
+            mp_pri->at_root()->tree_node_mgr()->update();
+        }
+    }
+}
+
+void PrimitiveWindow::set_rounded_corner_params()
+{
+    PriRounedCornerDialog dialog(mp_pri);
+    dialog.exec();
+}
+
+void PrimitiveWindow::add_inner_rounded_corner_for_shape()
+{
+    auto widget_item = this->mp_pri_tree_widget->tree_widge_menu()->get_current_pickup_tree_widget_item();
+    if(nullptr == widget_item)
+    {
+        return;
+    }
+
+    auto graphics_item = widget_item->graphics_item();
+    if(nullptr == graphics_item)
+    {
+        return;
+    }
+
+    auto point_item = dynamic_cast<sp::ShapePointGraphicsItem*>(graphics_item);
+    AttachTreeNode* tree_node = nullptr;
+    if(point_item)
+    {
+        AttachTreeBaseNode* node = at::AttachTreeUtils::attach_tree_node_point_item_in(point_item, mp_pri->at_root());
+        if(nullptr == node || node == mp_pri->at_root())
+        {
+            return;
+        }
+
+        tree_node = dynamic_cast<AttachTreeNode*>(node);
+        if(nullptr == tree_node)
+        {
+            return;
+        }
+
+        int idx = AttachTreeUtils::point_item_index_in_tree_node(tree_node, point_item);
+        const auto& shape_name = tree_node->shape_name();
+        if( (shape_name != SHAPE_RECTANGLE) && (shape_name != SHAPE_TRIANGLE))
+        {
+            return;
+        }
+
+        if( shape_name == SHAPE_TRIANGLE && idx != 1)
+        {
+            return;
+        }
+
+
+        AttachTreeNode * delete_rectangle_node = AttachTreeUtils::create_inner_rounded_corner(point_item, mp_pri->at_root(), mp_pri->layer_mgr());
+
+        AttachTreeUtils::rotate_rounded_corner(tree_node, idx, delete_rectangle_node);
+    }
+    else
+    {
+        auto shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem*>(graphics_item);
+        if(nullptr == shape_item)
+        {
+            return;
+        }
+
+        tree_node = AttachTreeUtils::attach_tree_node_shape_item_in(shape_item, mp_pri->at_root());
+        if(nullptr == tree_node || tree_node->shape_name() != SHAPE_RECTANGLE)
+        {
+            return;
+        }
+
+        auto point_items = tree_node->point_items();
+        for(auto idx = 0; idx < point_items.size(); idx++)
+        {
+            point_item = point_items[idx];
+
+            AttachTreeNode * delete_rectangle_node = AttachTreeUtils::create_inner_rounded_corner(point_item, mp_pri->at_root(), mp_pri->layer_mgr());
+
+            AttachTreeUtils::rotate_rounded_corner(tree_node, idx, delete_rectangle_node);
+        }
+    }
+
+    emit mp_pri->signal_add_new_tree();
+
+    tree_node->update();
+    mp_pri->at_root()->tree_node_mgr()->update();
+}
+
+void PrimitiveWindow::add_outer_rounded_corner_for_shape()
+{
+    auto widget_item = this->mp_pri_tree_widget->tree_widge_menu()->get_current_pickup_tree_widget_item();
+    if(nullptr == widget_item)
+    {
+        return;
+    }
+
+    auto graphics_item = widget_item->graphics_item();
+    if(nullptr == graphics_item)
+    {
+        return;
+    }
+
+    auto point_item = dynamic_cast<sp::ShapePointGraphicsItem*>(graphics_item);
+    AttachTreeNode* tree_node = nullptr;
+    if(nullptr == point_item)
+    {
+        return;
+    }
+
+    AttachTreeBaseNode* node = at::AttachTreeUtils::attach_tree_node_point_item_in(point_item, mp_pri->at_root());
+    if(nullptr == node || node == mp_pri->at_root())
+    {
+        return;
+    }
+
+    tree_node = dynamic_cast<AttachTreeNode*>(node);
+    if(nullptr == tree_node)
+    {
+        return;
+    }
+
+    if(tree_node->node_type() != NodeType::ADD)
+    {
+        return;
+    }
+
+    int idx = AttachTreeUtils::point_item_index_in_tree_node(tree_node, point_item);
+    const auto& shape_name = tree_node->shape_name();
+    if( (shape_name != SHAPE_RECTANGLE) && (shape_name != SHAPE_TRIANGLE))
+    {
+        return;
+    }
+
+    if( shape_name == SHAPE_TRIANGLE && idx != 1)
+    {
+        return;
+    }
+
+    AttachTreeNode * add_rectangle_node = AttachTreeUtils::create_outer_rounded_corner(point_item, mp_pri->at_root(), mp_pri->layer_mgr());
+
+    AttachTreeUtils::rotate_rounded_corner(tree_node, idx, add_rectangle_node);
+
+    emit mp_pri->signal_add_new_tree();
+
+    tree_node->update();
+    mp_pri->at_root()->tree_node_mgr()->update();
+}
+
+void pr::PrimitiveWindow::on_dock_widget_resize()
+{
+    match_viewport();
 }
 
 QPointF PrimitiveWindow::current_scene_pos() const
@@ -1346,4 +1649,5 @@ void PrimitiveWindow::clear_cache()
         SAFE_DELETE(point_item);
     }
     m_chosen_coord_points.clear();
+    m_preview_polygen.setPolygon(QPolygonF{});
 }

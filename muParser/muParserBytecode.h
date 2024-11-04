@@ -53,6 +53,7 @@ namespace mu
 			struct // SValData
 			{
 				value_type* ptr;
+				int dataIdx; //Parser modify
 				value_type  data;
 				value_type  data2;
 			} Val;
@@ -84,9 +85,10 @@ namespace mu
 		values and function pointers. Those are necessary in order to calculate the result.
 		All those data items will be casted to the underlying datatype of the bytecode.
 	*/
-	class ParserByteCode final
+	class API_EXPORT_CXX ParserByteCode final
 	{
 	private:
+		int m_FinalResultIdx; //Parser modify
 
 		/** \brief Token type for internal use only. */
 		typedef ParserToken<value_type, string_type> token_type;
@@ -94,8 +96,17 @@ namespace mu
 		/** \brief Token vector for storing the RPN. */
 		typedef std::vector<SToken> rpn_type;
 
+		/** \brief Type for a vector of strings. */
+		typedef std::vector<string_type> stringbuf_type;
+
 		/** \brief Position in the Calculation array. */
 		unsigned m_iStackPos;
+
+		/** \brief String variable storage. */
+		stringbuf_type m_stringBuffer;
+
+		/** \brief The expression associated with this bytecode. */
+		string_type m_expr;
 
 		/** \brief Maximum size needed for the stack. */
 		std::size_t m_iMaxStackSize;
@@ -115,6 +126,7 @@ namespace mu
 		void Assign(const ParserByteCode& a_ByteCode);
 
 		void AddVar(value_type* a_pVar);
+		void AddFuncVar(value_type* a_pVar, int& Idx); //Parser modify
 		void AddVal(value_type a_fVal);
 		void AddOp(ECmdCode a_Oprt);
 		void AddIfElse(ECmdCode a_Oprt);
@@ -128,6 +140,12 @@ namespace mu
 		void Finalize();
 		void clear();
 		std::size_t GetMaxStackSize() const;
+		//Parser modify
+		int &GetFinalResultIdx() 
+		{
+			return m_FinalResultIdx;
+		}
+
 
 		std::size_t GetSize() const
 		{
@@ -142,7 +160,28 @@ namespace mu
 				return &m_vRPN[0];
 		}
 
-		void AsciiDump();
+        //Parser modify
+		inline SToken* GetLastBase()
+		{
+			if (m_vRPN.size() == 0)
+				throw ParserError(ecINTERNAL_ERROR);
+			else
+				return &m_vRPN.back();
+		}
+
+
+		void StoreEnvironment(string_type expr, stringbuf_type const& strBuf)
+		{
+			m_stringBuffer = strBuf;
+			m_expr = expr;
+		}
+
+		std::tuple<string_type, stringbuf_type> RestoreEnvironment() const
+		{
+			return std::make_tuple(m_expr, m_stringBuffer);
+		}
+
+		void AsciiDump() const;
 	};
 
 } // namespace mu

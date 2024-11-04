@@ -134,7 +134,7 @@ ParamRuleWidget::~ParamRuleWidget()
 
 void ParamRuleWidget::update_all_items()
 {
-    mp_table_widget->clear();
+    mp_table_widget->clearContents();
     for (auto i = 0; i < mp_param_mgr->rules().size(); i++)
     {
         int rowCount = i;

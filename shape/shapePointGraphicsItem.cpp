@@ -53,6 +53,16 @@ void ShapePointGraphicsItem::set_anchor_point(bool is_anchor_point)
     m_is_anchor_point = is_anchor_point;
 }
 
+const QString &ShapePointGraphicsItem::rotate_angle() const
+{
+    return m_rotate_angle;
+}
+
+void ShapePointGraphicsItem::set_rotate_angle(const QString &rotate_angle)
+{
+    m_rotate_angle = rotate_angle;
+}
+
 bool ShapePointGraphicsItem::is_coor_anchor_point() const
 {
     return m_is_coor_anchor_point;
@@ -121,7 +131,7 @@ const QString &ShapePointGraphicsItem::shape_name() const
     return m_shape_name;
 }
 
-const ShapeDrawGraphicsItem *ShapePointGraphicsItem::shape_item() const
+ShapeDrawGraphicsItem *ShapePointGraphicsItem::shape_item() const
 {
     return mp_shape_item;
 }

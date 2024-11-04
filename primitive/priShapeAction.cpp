@@ -2,6 +2,7 @@
 #include "priShapeAction.h"
 #include "shapeDefines.h"
 #include <PriCircleAction.h>
+#include <PriCurveAction.h>
 #include <PriEllipseAction.h>
 #include <PriPolygenAction.h>
 #include <PriRectangleAction.h>
@@ -19,11 +20,15 @@ PriShapeAction::PriShapeAction(const QIcon &icon, const QString &text, Primitive
         mp_action = new PriCircleAction(icon, text, parent, layer_widget);
         setObjectName(SHAPE_CIRCLE);
     }
+    else if(text == SHAPE_CURVE)
+    {
+        mp_action = new PriCurveAction(icon, text, parent, layer_widget);
+        setObjectName(SHAPE_CURVE);
+    }
     else if(text == SHAPE_ELLIPSE)
     {
         mp_action = new PriEllipseAction(icon, text, parent, layer_widget);
         setObjectName(SHAPE_ELLIPSE);
-
     }
     else if(text == SHAPE_QUADRANGLE)
     {

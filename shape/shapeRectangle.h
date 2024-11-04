@@ -29,11 +29,11 @@ private:
 
 
 // rec shape factory only create RectShape
-class ShapeRectangleFacotry final : public ShapeFactoryBase
+class ShapeRectangleFactory final : public ShapeFactoryBase
 {
 public:
-    ShapeRectangleFacotry();
-    ~ShapeRectangleFacotry() override;
+    ShapeRectangleFactory();
+    ~ShapeRectangleFactory() override;
 
     ShapeBase *create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const override;
 };

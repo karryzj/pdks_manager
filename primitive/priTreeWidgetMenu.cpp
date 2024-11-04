@@ -7,15 +7,20 @@
 #include "primitiveDefines.h"
 #include "priRotateCfgDialog.h"
 #include <AttachTreeNodeData.h>
+#include <PriMirrorDialog.h>
 #include <PriTreeWidget.h>
 #include <PriUtils.h>
 #include <QGraphicsSceneContextMenuEvent>
 #include <ShapeDrawGraphicsItem.h>
+#include <priConvertShapeDialog.h>
 #include <qapplication.h>
 #include <qmessagebox.h>
 #include "scopeTimer.h"
 #include "shapeBase.h"
 #include "expression.h"
+#include "shapeDefines.h"
+#include "commandManager.h"
+#include "rotateCommand.h"
 using namespace pr;
 
 PriTreeWidgetMenu::PriTreeWidgetMenu(PriTreeWidget *parent, Primitive* pri)
@@ -32,12 +37,23 @@ PriTreeWidgetMenu::~PriTreeWidgetMenu()
 
 void PriTreeWidgetMenu::set_current_pickup_tree_widget_item(PriTreeWidgetItem *tree_widget_item)
 {
-    mp_pickup_tree_widget_item = tree_widget_item;
+    if(nullptr == tree_widget_item)
+    {
+        mp_pickup_graphics_item = nullptr;
+    }
+    else
+    {
+        mp_pickup_graphics_item = tree_widget_item->graphics_item();
+    }
 }
 
 PriTreeWidgetItem* PriTreeWidgetMenu::get_current_pickup_tree_widget_item()
 {
-    return mp_pickup_tree_widget_item;
+    if(nullptr == mp_pickup_graphics_item)
+    {
+        return nullptr;
+    }
+    return mp_pri_tree_widget->search_tree_widget_item(mp_pickup_graphics_item);
 }
 
 void PriTreeWidgetMenu::notify_signal_anchor_action_triggered(const QVariant &data)
@@ -68,6 +84,14 @@ void PriTreeWidgetMenu::init()
     rotate_action->setObjectName(PRI_TREE_WIDGET_MENU_ROTATE_ACTION_NAME);
     connect(rotate_action, &QAction::triggered, this, &PriTreeWidgetMenu::onRotateActionTriggered);
 
+    QAction* mirror_action = addAction(PRI_TREE_WIDGET_MENU_MIRROR_ACTION_NAME);
+    mirror_action->setObjectName(PRI_TREE_WIDGET_MENU_MIRROR_ACTION_NAME);
+    connect(mirror_action, &QAction::triggered, this, &PriTreeWidgetMenu::onMirrorActionTriggered);
+
+    QAction* conver_shape_action = addAction(PRI_TREE_WIDGET_MENU_CONVERT_SHAPE_ACTION_NAME);
+    conver_shape_action->setObjectName(PRI_TREE_WIDGET_MENU_CONVERT_SHAPE_ACTION_NAME);
+    connect(conver_shape_action, &QAction::triggered, this, &PriTreeWidgetMenu::onConvertShapeActionTriggered);
+
     QAction* set_anchor_action = addAction(PRI_TREE_WIDGET_MENU_ANCHOR_POINT_ACTION_NAME);
     set_anchor_action->setObjectName(PRI_TREE_WIDGET_MENU_ANCHOR_POINT_ACTION_NAME);
     connect(set_anchor_action, &QAction::triggered, this, &PriTreeWidgetMenu::onAnchorActionTriggered);
@@ -93,25 +117,38 @@ void PriTreeWidgetMenu::showEvent(QShowEvent *event)
     QAction* cut_action = findChild<QAction*> (PRI_TREE_WIDGET_MENU_CUT_ACTION_NAME);
     QAction* paste_action = findChild<QAction*> (PRI_TREE_WIDGET_MENU_PASTE_ACTION_NAME);
     QAction* rotate_action = findChild<QAction*> (PRI_TREE_WIDGET_MENU_ROTATE_ACTION_NAME);
+    QAction* mirror_action = findChild<QAction*> (PRI_TREE_WIDGET_MENU_MIRROR_ACTION_NAME);
+    QAction* conver_to_action = findChild<QAction*> (PRI_TREE_WIDGET_MENU_CONVERT_SHAPE_ACTION_NAME);
     QAction* set_anchor_action = findChild< QAction*>(PRI_TREE_WIDGET_MENU_ANCHOR_POINT_ACTION_NAME);
     QAction* set_coord_action = findChild< QAction*>(PRI_TREE_WIDGET_MENU_COORD_POINT_ACTION_NAME);
     QAction* attribute_action = findChild< QAction*>(PRI_TREE_WIDGET_MENU_ATTRIBUTE_ACTION_NAME);
 
-    if(nullptr ==  mp_pickup_tree_widget_item)
+    if(nullptr ==  mp_pickup_graphics_item)
     {
         setVisible(false);  // 这种情况什么都干不了
         return;
     }
 
-    auto shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem * >(mp_pickup_tree_widget_item->graphics_item());
-    auto point_item = dynamic_cast<sp::ShapePointGraphicsItem * >(mp_pickup_tree_widget_item->graphics_item());
+    auto shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem * >(mp_pickup_graphics_item);
+    auto point_item = dynamic_cast<sp::ShapePointGraphicsItem * >(mp_pickup_graphics_item);
     if(shape_item)
     {
+        auto tree_node = at::AttachTreeUtils::attach_tree_node_shape_item_in(shape_item, mp_pri->at_root());
+
         cut_action->setVisible(true);
         copy_action->setVisible(true);
         attribute_action->setVisible(true);
         paste_action->setVisible(false);   // 如果是在对图形进行操作，是不能看到的
         rotate_action->setVisible(true);
+        mirror_action->setVisible(true);
+        if(tree_node->shape_name() == SHAPE_RECTANGLE && tree_node->node_type() == at::NodeType::LOCATION)
+        {
+            conver_to_action->setVisible(true);
+        }
+        else
+        {
+            conver_to_action->setVisible(false);
+        }
     }
     else
     {
@@ -120,8 +157,9 @@ void PriTreeWidgetMenu::showEvent(QShowEvent *event)
         attribute_action->setVisible(false);
         paste_action->setVisible(true);
         rotate_action->setVisible(false);
+        mirror_action->setVisible(false);
+        conver_to_action->setVisible(false);
     }
-
 
     if(mp_copied_tree_node == nullptr && mp_cut_tree_node == nullptr)
     {
@@ -153,12 +191,12 @@ void PriTreeWidgetMenu::showEvent(QShowEvent *event)
 
 void PriTreeWidgetMenu::record_cut_tree_node_info()
 {
-    if(!mp_pickup_tree_widget_item)
+    if(nullptr == mp_pickup_graphics_item)
     {
         return;
     }
 
-    auto item = mp_pickup_tree_widget_item->graphics_item();
+    auto item = mp_pickup_graphics_item;
     sp::ShapeDrawGraphicsItem* shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem * >(item);
     if(!shape_item)
     {
@@ -170,12 +208,12 @@ void PriTreeWidgetMenu::record_cut_tree_node_info()
 
 void PriTreeWidgetMenu::record_copied_tree_node_info()
 {
-    if(!mp_pickup_tree_widget_item)
+    if(nullptr == mp_pickup_graphics_item)
     {
         return;
     }
 
-    auto item = mp_pickup_tree_widget_item->graphics_item();
+    auto item = mp_pickup_graphics_item;
     sp::ShapeDrawGraphicsItem* shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem * >(item);
     if(!shape_item)
     {
@@ -187,7 +225,7 @@ void PriTreeWidgetMenu::record_copied_tree_node_info()
 
 void PriTreeWidgetMenu::paste_cut_or_copied_tree_node_info()
 {
-    if(!mp_pickup_tree_widget_item)
+    if(nullptr == mp_pickup_graphics_item)
     {
         return;
     }
@@ -214,7 +252,7 @@ void PriTreeWidgetMenu::paste_cut_or_copied_tree_node_info()
         Q_ASSERT(false);
     }
 
-    auto* point_item = dynamic_cast<sp::ShapePointGraphicsItem * >(mp_pickup_tree_widget_item->graphics_item());
+    auto* point_item = dynamic_cast<sp::ShapePointGraphicsItem * >(mp_pickup_graphics_item);
     if(!point_item)
     {
         return;
@@ -255,15 +293,15 @@ void PriTreeWidgetMenu::paste_cut_or_copied_tree_node_info()
     emit mp_pri->signal_add_new_tree();
 
     mp_pri_tree_widget->update_tree();
-    mp_pickup_tree_widget_item = nullptr;
+    mp_pickup_graphics_item = nullptr;
 
     mp_pri->tree_node_mgr()->update();
 }
 
 void PriTreeWidgetMenu::set_pickup_tree_widget_item(QGraphicsItem *item)
 {
-    mp_pickup_tree_widget_item = mp_pri_tree_widget->search_tree_widget_item(item);
-    mp_pri_tree_widget->setCurrentItem(mp_pickup_tree_widget_item);
+    mp_pickup_graphics_item = item;
+    mp_pri_tree_widget->setCurrentItem(mp_pri_tree_widget->search_tree_widget_item(mp_pickup_graphics_item));
 }
 
 void PriTreeWidgetMenu::onAnchorActionTriggered()
@@ -364,12 +402,12 @@ void PriTreeWidgetMenu::onCoordActionTriggered()
 
 void PriTreeWidgetMenu::reedit_shape()
 {
-    if(!mp_pickup_tree_widget_item)
+    if(nullptr  == mp_pickup_graphics_item)
     {
         return;
     }
 
-    auto item = mp_pickup_tree_widget_item->graphics_item();
+    auto item = mp_pickup_graphics_item;
     sp::ShapeDrawGraphicsItem* shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem * >(item);
     if(!shape_item)
     {
@@ -416,36 +454,35 @@ void PriTreeWidgetMenu::child_rotate(at::AttachTreeNode * root_node, const Rotat
     };
 
     func(root_node, rotate_cfg);
-    if (rotate_cfg.child_self)
+    if (!rotate_cfg.child_self)
     {
-        return;
-    }
-
-    QVector<at::AttachTreeNode*> ready_to_update_nodes;
-    const auto& mp = root_node->children();
-    for(auto itor = mp.begin(); itor != mp.end(); itor++)
-    {
-        ready_to_update_nodes.append(itor.value());
-    }
-
-    while(!ready_to_update_nodes.empty())
-    {
-        QVector<at::AttachTreeNode*> next_nodes;
-        for(auto node : ready_to_update_nodes)
+        QVector<at::AttachTreeNode*> ready_to_update_nodes;
+        const auto& mp = root_node->children();
+        for(auto itor = mp.begin(); itor != mp.end(); itor++)
         {
-            node->set_update_children(false);
-            func(node, rotate_cfg);
-            node->set_update_children(true);
-
-            const QMap<int, QVector<at::AttachTreeNode *> > & mp = node->children();
-            for(auto itor = mp.begin(); itor != mp.end(); itor++)
-            {
-                const auto& children = itor.value();
-                next_nodes.append(children);
-            }
+            ready_to_update_nodes.append(itor.value());
         }
-        qSwap(next_nodes, ready_to_update_nodes);
+
+        while(!ready_to_update_nodes.empty())
+        {
+            QVector<at::AttachTreeNode*> next_nodes;
+            for(auto node : ready_to_update_nodes)
+            {
+                node->set_update_children(false);
+                func(node, rotate_cfg);
+                node->set_update_children(true);
+
+                const QMap<int, QVector<at::AttachTreeNode *> > & mp = node->children();
+                for(auto itor = mp.begin(); itor != mp.end(); itor++)
+                {
+                    const auto& children = itor.value();
+                    next_nodes.append(children);
+                }
+            }
+            qSwap(next_nodes, ready_to_update_nodes);
+        }
     }
+    root_node->update();
 }
 
 void PriTreeWidgetMenu::children_rotate(QVector<at::AttachTreeNode *> nodes, const RotateCfg &rotate_cfg)
@@ -464,12 +501,12 @@ void PriTreeWidgetMenu::onRotateActionTriggered()
         return;
     }
 
-    if(!mp_pickup_tree_widget_item)
+    if(nullptr == mp_pickup_graphics_item)
     {
         return;
     }
 
-    auto item = mp_pickup_tree_widget_item->graphics_item();
+    auto item = mp_pickup_graphics_item;
     sp::ShapeDrawGraphicsItem* shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem * >(item);
     if(!shape_item)
     {
@@ -482,15 +519,70 @@ void PriTreeWidgetMenu::onRotateActionTriggered()
     {
         SCOPE_TIMER("旋转操作用时");
         auto rotate_cfg = dialog.get_result();
+        auto old_rotate_cfg = dialog.get_old_result();
         child_rotate(root_node, rotate_cfg);
         mp_pri->tree_node_mgr()->update();
+        cmd::CommandManager::instance()->push(new cmd::RotateCommand(root_node, rotate_cfg, old_rotate_cfg));
     }
 
 }
 
+void PriTreeWidgetMenu::onMirrorActionTriggered()
+{
+    QAction *action = findChild<QAction*>(PRI_TREE_WIDGET_MENU_MIRROR_ACTION_NAME);
+    if(action == nullptr)
+    {
+        return;
+    }
+
+    if(nullptr == mp_pickup_graphics_item)
+    {
+        return;
+    }
+
+    auto item = mp_pickup_graphics_item;
+    sp::ShapeDrawGraphicsItem* shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem * >(item);
+    if(!shape_item)
+    {
+        return;
+    }
+    auto root_node = at::AttachTreeUtils::attach_tree_node_shape_item_in(shape_item, mp_pri->at_root());
+
+    PriMirrorDialog dialog(root_node);
+    dialog.exec();
+}
+
+void PriTreeWidgetMenu::onConvertShapeActionTriggered()
+{
+    QAction *action = findChild<QAction*>(PRI_TREE_WIDGET_MENU_CONVERT_SHAPE_ACTION_NAME);
+    if(action == nullptr)
+    {
+        return;
+    }
+
+    if(nullptr == mp_pickup_graphics_item)
+    {
+        return;
+    }
+
+    auto item = mp_pickup_graphics_item;
+    sp::ShapeDrawGraphicsItem* shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem * >(item);
+    if(!shape_item)
+    {
+        return;
+    }
+    auto root_node = at::AttachTreeUtils::attach_tree_node_shape_item_in(shape_item, mp_pri->at_root());
+
+    priConvertShapeDialog *dialog = new priConvertShapeDialog(root_node);
+
+    connect(dialog, &priConvertShapeDialog::tree_widget_update, mp_pri_tree_widget, &PriTreeWidget::update_tree);
+
+    dialog->exec();
+}
+
 void PriTreeWidgetMenu::show_shape_info()
 {
-    auto item = mp_pickup_tree_widget_item->graphics_item();
+    auto item = mp_pickup_graphics_item;
     auto shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem*>(item);
     if(nullptr == shape_item)
     {
@@ -518,9 +610,9 @@ void PriTreeWidgetMenu::show_shape_info()
 void PriTreeWidgetMenu::on_before_tree_node(at::AttachTreeNode *tree_node)
 {
     // HINT@leixunyong。如果tree_node是已经被记录的剪切或者复制的节点及其子节点，就重置这些
-    if(mp_pickup_tree_widget_item)
+    if(mp_pickup_graphics_item)
     {
-        auto item = mp_pickup_tree_widget_item->graphics_item();
+        auto item = mp_pickup_graphics_item;
         auto shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem*>(item);
         at::AttachTreeNode* recorded_tree_node = nullptr;
         if(shape_item)
@@ -536,7 +628,7 @@ void PriTreeWidgetMenu::on_before_tree_node(at::AttachTreeNode *tree_node)
 
         if(recorded_tree_node && at::AttachTreeUtils::a_tree_node_is_b_child_tree_node(recorded_tree_node, tree_node))
         {
-            mp_pickup_tree_widget_item = nullptr;
+            mp_pickup_graphics_item = nullptr;
         }
 
     }

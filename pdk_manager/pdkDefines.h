@@ -13,7 +13,8 @@
 #define PDK_PRI_LAYER_SELECT_NAME                                    "图层选择"
 #define PDK_PRI_LAYER_NAME                                    "图元图层"
 #define PDK_PDK_LAYER_NAME                                    "PDK图层"
-#define PDK_PARAM_TECH_RULE_NAME                                    "参数及工艺约束"
+#define PDK_GDS_LAYER_NAME                                    "GDS图层"
+#define PDK_PARAM_TECH_RULE_NAME                              "参数"
 #define PDK_TECH_RULE_NAME                                    "工艺约束"
 
 // 图元

@@ -33,7 +33,7 @@ IDC           = idc
 IDL           = midl
 ZIP           = zip -r -9
 DEF_FILE      = 
-RES_FILE      = 
+RES_FILE      = muParser_resource.res
 SED           = $(QMAKE) -install sed
 MOVE          = move
 SUBTARGETS    =  \
@@ -244,6 +244,8 @@ Makefile: muParser.pro C:\Qt\Qt5.14.2\5.14.2\msvc2017_64\mkspecs\win32-msvc\qmak
 		C:\Qt\Qt5.14.2\5.14.2\msvc2017_64\mkspecs\features\win32\default_pre.prf \
 		..\ququan_shapes.pri \
 		..\lib.pri \
+		..\ququan_layout.pri \
+		..\with_all_libs.pri \
 		C:\Qt\Qt5.14.2\5.14.2\msvc2017_64\mkspecs\features\resolve_config.prf \
 		C:\Qt\Qt5.14.2\5.14.2\msvc2017_64\mkspecs\features\exclusive_builds_post.prf \
 		C:\Qt\Qt5.14.2\5.14.2\msvc2017_64\mkspecs\features\default_post.prf \
@@ -419,6 +421,8 @@ C:\Qt\Qt5.14.2\5.14.2\msvc2017_64\mkspecs\features\default_pre.prf:
 C:\Qt\Qt5.14.2\5.14.2\msvc2017_64\mkspecs\features\win32\default_pre.prf:
 ..\ququan_shapes.pri:
 ..\lib.pri:
+..\ququan_layout.pri:
+..\with_all_libs.pri:
 C:\Qt\Qt5.14.2\5.14.2\msvc2017_64\mkspecs\features\resolve_config.prf:
 C:\Qt\Qt5.14.2\5.14.2\msvc2017_64\mkspecs\features\exclusive_builds_post.prf:
 C:\Qt\Qt5.14.2\5.14.2\msvc2017_64\mkspecs\features\default_post.prf:

@@ -30,7 +30,9 @@ Primitive::Primitive(QString name, double dbu)
     , m_name(name)
     , m_thumbnail(name + "/" + "thumbnail.png")
     , m_json(name + "/" + "data.json")
+    , m_py_json(name + "/" + "info.json")
     , m_dbu(dbu)
+    , m_arc_len(1.0)
     , m_password("ququan123456")
 {
 
@@ -41,7 +43,9 @@ Primitive::Primitive(QString name, QGraphicsView *view, double dbu)
     , m_name(name)
     , m_thumbnail(name + "/" + "thumbnail.png")
     , m_json(name + "/" + "data.json")
+    , m_py_json(name + "/" + "info.json")
     , m_dbu(dbu)
+    , m_arc_len(1.0)
     , m_password("ququan123456")
     , mp_layer_mgr(new ly::LayerMgr())
     , mp_param_mgr(new pm::ParamMgr())
@@ -178,14 +182,43 @@ int Primitive::load_node_json_file(const QString &filename)
     return 0;
 }
 
+int Primitive::load_python_json_file(const QString &filename)
+{
+    QFile file(filename);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        qDebug() << "Failed to open file:" << filename;
+        return -1;
+    }
+    QByteArray jsonData = file.readAll();
+    file.close();
+
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(jsonData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError)
+    {
+        qDebug() << "Failed to parse JSON:" << parseError.errorString();
+        return -1;
+    }
+
+    // QJsonDocument doc = cm::Crypto::decrypt_json_doc(filename, m_password);
+    if (!doc.isObject())
+    {
+        qDebug() << "JSON document is not an object.";
+        return -1;
+    }
+
+    QJsonObject jsonObject = doc.object();
+
+    PriFiler filer(this);
+    filer.load_py_info_from_file(jsonObject);
+    return 0;
+}
+
 void Primitive::set_json_anchors(const QVector<at::AttachTreeUtils::AttachPointPosInf> &anchors)
 {
     m_json_anchors = anchors;
-}
-
-void Primitive::set_anchors(const QVector<at::AttachTreeUtils::AttachPointPosInf> &anchors)
-{
-    at::AttachTreeUtils::set_anchors_inf(at_root(), anchors);
 }
 
 int Primitive::load(QGraphicsView *view)
@@ -204,7 +237,9 @@ int Primitive::load(QGraphicsView *view)
     }
     else
     {
+        mp_tree_node_mgr->set_disable(true);
         mp_at_root->remove_all();
+        mp_tree_node_mgr->set_disable(false);
         mp_at_root->set_new_graphics_view(nullptr);
     }
 
@@ -247,6 +282,42 @@ void Primitive::reset()
 double Primitive::dbu()
 {
     return m_dbu;
+}
+
+int Primitive::load_py_json()
+{
+    if(!mp_layer_mgr)
+    {
+        mp_layer_mgr = new ly::LayerMgr();
+    }
+    else
+    {
+        mp_layer_mgr->reset();
+    }
+
+    if(!mp_param_mgr)
+    {
+        mp_param_mgr = new pm::ParamMgr();
+    }
+    else
+    {
+        mp_param_mgr->reset();
+    }
+
+    QString full_path;
+    if (m_py_json.contains("/primitives"))
+    {
+        full_path = m_py_json;
+    }
+    else
+    {
+        QString current_path = QDir::currentPath() + "/data/primitives";
+        QString json_path = m_py_json.replace("#", "/");
+        full_path = current_path + "/" + json_path;
+    }
+
+    int ret = load_python_json_file(full_path);
+    return ret;
 }
 
 int Primitive::save_json_file(const QString &filename)
@@ -317,7 +388,7 @@ pm::ParamMgr *Primitive::param_mgr() const
     return mp_param_mgr;
 }
 
-QVector<at::AttachTreeUtils::AttachPointPosInf> Primitive::get_json_anchors()
+const QVector<at::AttachTreeUtils::AttachPointPosInf>& Primitive::get_json_anchors()
 {
     return m_json_anchors;
 }

@@ -133,6 +133,10 @@ for /f %%i in ('reg query "HKEY_CURRENT_USER\Software\Microsoft\Windows NT\Curre
 	)
 )
 
+rem copy 3th dll
+rem sundials_core.dll
+rem sundials_kinsol.dll
+rem sundials_nvecserial.dll
 copy /Y "%softDir%mingw64\bin\libgcc_s_seh-1.dll" "%option-build%\"
 copy /Y "%softDir%mingw64\bin\libstdc++-6.dll" "%option-build%\"
 copy /Y "%softDir%mingw64\bin\libwinpthread-1.dll" "%option-build%\"
@@ -149,5 +153,10 @@ copy /Y "%QUQUAN_LAYOUT_LIB_DIR%\klayout_db.dll" "%option-build%\"
 copy /Y "%QUQUAN_LAYOUT_LIB_DIR%\klayout_gsi.dll" "%option-build%\"
 
 rem copy depending QT dll
+rem Qt5Core.dll
+rem Qt5Gui.dll
+rem Qt5Network.dll
+rem Qt5Widgets.dll
+rem Qt5Xml.dll
 rem todo
 

@@ -30,6 +30,7 @@ public:
                                          const QVector<pm::ParamDecl> & params,
                                          NodeType node_type,
                                          NodeDirection node_direction,
+                                         NodeBooleanSubtractType node_boolean_subtract_type,
                                          ly::LayerInfo* layer);
 };
 }

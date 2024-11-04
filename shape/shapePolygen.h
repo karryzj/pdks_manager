@@ -24,11 +24,11 @@ private:
     mutable QVector<QPointF> m_points;
 };
 
-class ShapePolygenFacotry final : public ShapeFactoryBase
+class ShapePolygenFactory final : public ShapeFactoryBase
 {
 public:
-    ShapePolygenFacotry();
-    ~ShapePolygenFacotry() override;
+    ShapePolygenFactory();
+    ~ShapePolygenFactory() override;
 
     ShapeBase *create_shape(const QString& shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const override;
 };

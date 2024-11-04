@@ -11,6 +11,7 @@ include($$PWD/../with_all_libs.pri)
 include($$PWD/../lib.pri)
 
 HEADERS += \
+    paramDefines.h \
     paramUtils.h \
     paramValidator.h \
     pointE.h \

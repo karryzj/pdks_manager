@@ -8,7 +8,7 @@ from enum import Enum
 from datetime import datetime
 
 
-from ququan.config import POINT_DISTANCE
+#from ququan.config import POINT_DISTANCE
 
 #POINT_DISTANCE=1 # um
 DPoint=pya.DPoint
@@ -26,6 +26,12 @@ class NodeType(Enum):
     ADD=1
     DELETE=2
     NONE=3
+
+class DelType(Enum):
+    NONE=0
+    ONLY_PARENT=1
+    PARENT_AND_BROTHER=2
+    PARENT_AND_CHILDRENS=3
 
 class Point:
     def __init__(self,x=0,y=0):
@@ -51,56 +57,30 @@ class Point:
 def get_rectangle(point, direct, width, height):
     polys=[]
 
-    if direct == NodeDirection.TOP_LEFT.value:
-        polys.append(Point(point.x,point.y+height))
-        polys.append(Point(point.x,point.y))
-        polys.append(Point(point.x-width,point.y))
-        polys.append(Point(point.x-width,point.y+height))
-    elif direct == NodeDirection.BOTTOM_LEFT.value:
-        polys.append(Point(point.x,point.y-height))
-        polys.append(Point(point.x,point.y))
-        polys.append(Point(point.x-width,point.y))
-        polys.append(Point(point.x-width,point.y-height))
-    elif direct == NodeDirection.BOTTOM_RIGHT.value:
-        polys.append(Point(point.x,point.y-height))
-        polys.append(Point(point.x,point.y))
-        polys.append(Point(point.x+width,point.y))
-        polys.append(Point(point.x+width,point.y-height))
-    elif direct == NodeDirection.TOP_RIGHT.value:
-        polys.append(Point(point.x,point.y+height))
-        polys.append(Point(point.x,point.y))
-        polys.append(Point(point.x+width,point.y))
-        polys.append(Point(point.x+width,point.y+height))
+
+    polys.append(DPoint(point.x,point.y+height))
+    polys.append(DPoint(point.x,point.y))
+    polys.append(DPoint(point.x+width,point.y))
+    polys.append(DPoint(point.x+width,point.y+height))
 
     return polys
 
-def get_rectangle_center(point,width,height):
-    polys=[]
-    x2=width/2
-    y2=height/2
 
-    polys.append(Point(point.x-x2,point.y+y2))
-    polys.append(Point(point.x-x2,point.y-y2))
-    polys.append(Point(point.x+x2,point.y-y2))
-    polys.append(Point(point.x+x2,point.y+y2))
-
-    return polys
-
-def arc(point, r, n=64, angle0=0, angle1=360):
-    n_auto=int(math.ceil(r*(angle1-angle0)*math.pi/180/POINT_DISTANCE)+2)
+def arc(point, r, point_distance, angle0=0, angle1=360):
+    n_auto=int(math.ceil(r*(angle1-angle0)*math.pi/180/point_distance)+2)
     n=n_auto
     #n=max(n,n_auto)
     angles = [angle0+1.0*x/(n-1)*(angle1-angle0) for x in range(n)]
-    arc_points = [Point(point.x+r*math.cos(angle*math.pi/180), point.y+r*math.sin(angle*math.pi/180)) for angle in angles]
+    arc_points = [DPoint(point.x+r*math.cos(angle*math.pi/180), point.y+r*math.sin(angle*math.pi/180)) for angle in angles]
         
     return arc_points
 
 # 圆
-def get_circle_points(point,r,n=64):
-    return arc(point,r,n)
+def get_circle_points(point,r,point_distance):
+    return arc(point,r,point_distance)
 
 # 圆弧、圆环
-def get_pie_points(point,r_out,r_in=0,angle0=0,angle1=360,n=64):
+def get_pie_points(point,r_out,r_in=0,angle0=0,angle1=360,point_distance=1.0):
     if angle1 <= angle0:
         angle1 = angle1+360
 
@@ -109,28 +89,29 @@ def get_pie_points(point,r_out,r_in=0,angle0=0,angle1=360,n=64):
         angle1=360
 
     if r_in==0 and angle1-angle0>=360:
-        return arc(point,r_out,n)
+        return arc(point,r_out,point_distance)
     
     if r_in !=0:
-        poly_in = arc(point,r_in,n,angle0,angle1)
-        poly_out = arc(point,r_out,n,angle0,angle1)
+        poly_in = arc(point,r_in,point_distance,angle0,angle1)
+        poly_out = arc(point,r_out,point_distance,angle0,angle1)
         poly_out.reverse()
         return poly_in+poly_out
     else:
-        poly_out = arc(point,r_out,n,angle0,angle1)
+        poly_out = arc(point,r_out,point_distance,angle0,angle1)
         poly_out.append(point)
         return poly_out
 
-def ellipse_arc(point, r_x,r_y, n=64, angle0=0, angle1=360):
-    n_auto=int(math.ceil(max(r_x,r_y)*(angle1-angle0)*math.pi/180/POINT_DISTANCE)+2)
-    n=max(n,n_auto)
+def ellipse_arc(point, r_x,r_y, angle0=0, angle1=360,point_distance=1.0):
+    n_auto=int(math.ceil(max(r_x,r_y)*(angle1-angle0)*math.pi/180/point_distance)+2)
+    n=n_auto
+    #n=max(n,n_auto)
     angles = [angle0+1.0*x/(n-1)*(angle1-angle0) for x in range(n)]
-    arc_points = [Point(point.x+r_x*math.cos(angle*math.pi/180), point.y+r_y*math.sin(angle*math.pi/180)) for angle in angles]
+    arc_points = [DPoint(point.x+r_x*math.cos(angle*math.pi/180), point.y+r_y*math.sin(angle*math.pi/180)) for angle in angles]
         
     return arc_points
 
 # 椭圆
-def get_ellipse_points(point,r_x,r_y,angle0=0,angle1=360,n=64):
+def get_ellipse_points(point,r_x,r_y,angle0=0,angle1=360,point_distance=1.0):
     if angle1 <= angle0:
         angle1 = angle1+360
 
@@ -138,7 +119,7 @@ def get_ellipse_points(point,r_x,r_y,angle0=0,angle1=360,n=64):
         angle0=0
         angle1=360
 
-    points=ellipse_arc(point,r_x,r_y,n,angle0,angle1)
+    points=ellipse_arc(point,r_x,r_y,angle0,angle1,point_distance)
     if angle1-angle0<360:
         points.append(point)
 
@@ -153,34 +134,13 @@ def get_triangle_points(point, direct, width, height):
 def get_quadrangle_points(point, direct, width, height,x1,x2,x3,x4):
     polys=[]
 
-    if direct == NodeDirection.TOP_LEFT.value:
-        polys.append(Point(point.x-x2,point.y+height))
-        polys.append(Point(point.x,point.y+x1))
-        polys.append(Point(point.x-width+x4,point.y))
-        polys.append(Point(point.x-width,point.y+height-x3))
-    elif direct == NodeDirection.BOTTOM_LEFT.value:
-        polys.append(Point(point.x-x2,point.y-height))
-        polys.append(Point(point.x,point.y-x1))
-        polys.append(Point(point.x-width+x4,point.y))
-        polys.append(Point(point.x-width,point.y-height+x3))
-    elif direct == NodeDirection.BOTTOM_RIGHT.value:
-        polys.append(Point(point.x+x2,point.y-height))
-        polys.append(Point(point.x,point.y-x1))
-        polys.append(Point(point.x+width-x4,point.y))
-        polys.append(Point(point.x+width,point.y-height+x3))
-    elif direct == NodeDirection.TOP_RIGHT.value:
-        polys.append(Point(point.x+x2,point.y+height))
-        polys.append(Point(point.x,point.y+x1))
-        polys.append(Point(point.x+width-x4,point.y))
-        polys.append(Point(point.x+width,point.y+height-x3))
+    polys.append(DPoint(point.x+x2,point.y+height))
+    polys.append(DPoint(point.x,point.y+x1))
+    polys.append(DPoint(point.x+width-x4,point.y))
+    polys.append(DPoint(point.x+width,point.y+height-x3))
 
     return polys
 
-def trans_scale(points,odd):
-    return [Point(p.x*odd,p.y*odd) for p in points]
-
-def trans_pos(points,pos):
-    return [Point(p.x+pos.x,p.y+pos.y) for p in points]
 
 def get_param_value(params,k,global_params_func):
     for i in range(len(params)):
@@ -195,48 +155,106 @@ def get_param_value(params,k,global_params_func):
         
     return None
 
-def get_shape_polys(shape_name,params,direction,global_params_func,ori_pos):
+def get_param_value_from_map(param_maps,k,global_params_func):
+    if k in param_maps:
+        val = param_maps[k]
+
+        if type(val) == type(1) or type(val)==type(1.0):
+            return val
+        elif global_params_func:
+            return global_params_func(val)
+        else:
+            return None
+    else:
+        return None
+
+
+def get_shape_polys(shape_name,params,direction,global_params_func,point_distance,param_mgr):
     points=[]
+    ori_pos=DPoint(0,0)
+    param_maps={p['key']:p['value'] for p in params}
     if shape_name=='rectangle':
-        width = get_param_value(params,'width',global_params_func)
-        height = get_param_value(params,'height',global_params_func)
+        width = get_param_value_from_map(param_maps,'width',global_params_func)
+        height = get_param_value_from_map(param_maps,'height',global_params_func)
         return get_rectangle(ori_pos,direction,width,height)
-    elif shape_name=='circle':
-        r = get_param_value(params,'radius',global_params_func)
-        return get_circle_points(ori_pos, r)
+    elif shape_name=='circle':        
+        r = get_param_value_from_map(param_maps,'radius',global_params_func)
+        ori_pos=DPoint(r,r)
+        return get_circle_points(ori_pos, r,point_distance)
     elif shape_name=='triangle':
-        width = get_param_value(params,'width',global_params_func)
-        height = get_param_value(params,'height',global_params_func)
+        width = get_param_value_from_map(param_maps,'width',global_params_func)
+        height = get_param_value_from_map(param_maps,'height',global_params_func)
         return get_triangle_points(ori_pos, direction, width, height)
     elif shape_name=='ellipse':
-        rx = get_param_value(params,'semi major axis',global_params_func)
-        ry = get_param_value(params,'semi minor axis',global_params_func)
-        angle0 = get_param_value(params,'start angle',global_params_func)
-        angle1 = get_param_value(params,'end angle',global_params_func)
-        return get_ellipse_points(ori_pos, rx, ry, angle0, angle1)
+        rx = get_param_value_from_map(param_maps,'semi major axis',global_params_func)
+        ry = get_param_value_from_map(param_maps,'semi minor axis',global_params_func)
+        angle0 = get_param_value_from_map(param_maps,'start angle',global_params_func)
+        angle1 = get_param_value_from_map(param_maps,'end angle',global_params_func)
+        ori_pos=DPoint(rx,ry)
+        return get_ellipse_points(ori_pos, rx, ry, angle0, angle1,point_distance)
     elif shape_name=='quadrangle':
-        width = get_param_value(params,'width',global_params_func)
-        height = get_param_value(params,'height',global_params_func)
-        x1 = get_param_value(params,'parameter one',global_params_func)
-        x2 = get_param_value(params,'parameter two',global_params_func)
-        x3 = get_param_value(params,'parameter three',global_params_func)
-        x4 = get_param_value(params,'parameter four',global_params_func)
+        width = get_param_value_from_map(param_maps,'width',global_params_func)
+        height = get_param_value_from_map(param_maps,'height',global_params_func)
+        x1 = get_param_value_from_map(param_maps,'parameter one',global_params_func)
+        x2 = get_param_value_from_map(param_maps,'parameter two',global_params_func)
+        x3 = get_param_value_from_map(param_maps,'parameter three',global_params_func)
+        x4 = get_param_value_from_map(param_maps,'parameter four',global_params_func)
         return get_quadrangle_points(ori_pos, direction,width, height, x1, x2, x3, x4)
     elif shape_name=='sector':
-        rin = get_param_value(params,'inside radius',global_params_func)
-        rout = get_param_value(params,'outside radius',global_params_func)
-        angle0 = get_param_value(params,'start angle',global_params_func)
-        angle1 = get_param_value(params,'end angle',global_params_func)
-        return get_pie_points(ori_pos, rout, rin, angle0, angle1)
+        rin = get_param_value_from_map(param_maps,'inside radius',global_params_func)
+        rout = get_param_value_from_map(param_maps,'outside radius',global_params_func)
+        angle0 = get_param_value_from_map(param_maps,'start angle',global_params_func)
+        angle1 = get_param_value_from_map(param_maps,'end angle',global_params_func)
+        ori_pos=DPoint(rout,rout)
+        return get_pie_points(ori_pos, rout, rin, angle0, angle1,point_distance)
     elif shape_name=='polygen':
         p_num=int((len(params)-1)/2)
         for i in range(p_num):
-            x=get_param_value(params,'x'+str(i+1),global_params_func) + ori_pos.x
-            y=get_param_value(params,'y'+str(i+1),global_params_func) + ori_pos.y
+            x=get_param_value_from_map(param_maps,'x'+str(i+1),global_params_func) + ori_pos.x
+            y=get_param_value_from_map(param_maps,'y'+str(i+1),global_params_func) + ori_pos.y
             points.append(Point(x,y))
         if len(points)>0:
             points.append(Point(ori_pos.x,ori_pos.y))
         return points
+    elif shape_name=="curve":#曲线
+        equations_fixs=[]
+        
+        for i in range(len(params)):    #必须按params顺序遍历
+            k=params[i]['key']
+            if k.find("reverse")>=0:
+                continue
+
+            reverse_key=k+" reverse"
+            if k.find("equation")>=0:   #方程表达式                
+                if reverse_key in param_maps:
+                    equations_fixs.append([0,param_maps[k],param_maps[reverse_key]])    # type[0:equations 1:fixs],表达式,reverse
+                else:
+                    print("invalid curve")
+                    return points
+            elif k.find("fixed point set")>=0:   #方程表达式                
+                if reverse_key in param_maps:
+                    equations_fixs.append([1,param_maps[k],param_maps[reverse_key]])
+                else:
+                    print("invalid curve")
+                    return points
+                
+        for i in range(len(equations_fixs)):
+            pointi=[]
+            if equations_fixs[i][0]==0:     #方程
+                pointi=param_mgr.gen_curve_points(equations_fixs[i][1],point_distance)
+            elif equations_fixs[i][0]==1:   #固定点集
+                lines=equations_fixs[i][1].split("\n")
+                for line in lines:
+                    vals=line.strip().split(",")
+                    if len(vals)==2:
+                        x=global_params_func(vals[0])
+                        y=global_params_func(vals[1])
+                        pointi.append(DPoint(x,y))
+
+            if equations_fixs[i][2]=="true":
+                pointi.reverse()
+            points+=pointi
+
     else:
         print("not support shape:"+str(shape_name))
 
@@ -249,18 +267,33 @@ def reset_node_updated(node):
           node_i=node['children'][i]
           reset_node_updated(node_i)
 
-def get_node_points(node,parent,global_params_func):
-    layers={}
+# xy轴镜像
+def mirr_poly(poly,mirrx,mirry):
+    new_poly=[]
+    for p in poly:
+        pt=DPoint(p.x,p.y)
+        if mirrx:
+            pt.x = pt.x*-1
+        if mirry:
+            pt.y = pt.y*-1
 
-    #把每层的polys放一起
+        new_poly.append(pt)
+
+    return new_poly
+    
+#把所有层的polys放一起
+def get_node_points(node,parent,global_params_func,point_distance,param_mgr):
+    return_polys=[]
 
     if parent:
         ori_attach_point=parent['attach_points'][node['parent_attach_point_idx']]
         #ori_pos=Point(ori_attach_point['x'],ori_attach_point['y'])
     else:
         ori_attach_point={"x_val":0,"y_val":0}
+        node["parent"]=None
+        node['node_type']=NodeType.LOCATION.value
 
-    ori_pos=Point(ori_attach_point['x_val'],ori_attach_point['y_val'])
+    ori_pos=DPoint(ori_attach_point['x_val'],ori_attach_point['y_val'])
 
     # 1.更新attach_points坐标
     if not parent and 'attach_points' not in node.keys():   #root节点自动加
@@ -291,40 +324,44 @@ def get_node_points(node,parent,global_params_func):
     # 2.将形状加入points
     if node['parent_attach_point_idx'] != -1:
         if node['node_type']==NodeType.ADD.value or node['node_type']==NodeType.DELETE.value:
-            layer = node['layer']
-            if layer not in layers:
-                layers[layer]=[]
+            # 先获取图形相对于附着点的相对坐标
+            points=get_shape_polys(node['shape_name'],node['params'],node['node_direction'],global_params_func,point_distance,param_mgr)
 
-            points=get_shape_polys(node['shape_name'],node['params'],node['node_direction'],global_params_func,ori_pos)
+            #根据direction翻转x,y
+            if node['node_direction'] == NodeDirection.TOP_LEFT.value:
+                points = mirr_poly(points,True,False)
+            elif node['node_direction'] == NodeDirection.BOTTOM_LEFT.value:
+                points = mirr_poly(points,True,True)
+            elif node['node_direction'] == NodeDirection.BOTTOM_RIGHT.value:
+                points = mirr_poly(points,False,True)
+
             #转成 DPloygon
-            poly=pya.DPolygon([pya.DPoint(p.x,p.y) for p in points])
+            #poly=pya.DPolygon([pya.DPoint(p.x,p.y) for p in points])
+            poly=pya.DPolygon(points)
 
             #rotate
             rotate=get_param_value(node['params'],'rotate',global_params_func)
             if rotate and rotate!=0:
-                #tr = pya.DCplxTrans(1, rotate, False, 0, 0)
-                #poly=poly.transformed(tr)
-
                 #先移动到原点，再旋转，最后再偏移
-                poly=poly.transformed(pya.DCplxTrans(1, 0, False, -ori_pos.x, -ori_pos.y))
+                #poly=poly.transformed(pya.DCplxTrans(1, 0, False, -ori_pos.x, -ori_pos.y))
                 poly=poly.transformed(pya.DCplxTrans(1, rotate, False, 0, 0))
-                poly=poly.transformed(pya.DCplxTrans(1, 0, False, ori_pos.x, ori_pos.y))
+                #poly=poly.transformed(pya.DCplxTrans(1, 0, False, ori_pos.x, ori_pos.y))
+
+            #从相对坐标移动到绝对坐标
+            poly=poly.transformed(pya.DCplxTrans(1, 0, False, ori_pos.x, ori_pos.y))
             
-            #points=trans_pos(points,ori_pos)
-            layers[layer].append({'points':poly,'id':node['id'],'node_type':node['node_type']})
+            return_polys.append({'points':poly,'id':node['id'],'node_type':node['node_type'],'node':node})
 
     # 3.将子节点的points加入
     if 'children' in node.keys():
       for i in range(len(node['children'])):
           node_i=node['children'][i]
-          layers_i=get_node_points(node_i,node,global_params_func)
-  
-          for layer in layers_i:
-              if layer not in layers:
-                  layers[layer]=[]
-              layers[layer]+=layers_i[layer]
-
-    return layers
+          node_i["parent"]=node
+          children_i=get_node_points(node_i,node,global_params_func,point_distance,param_mgr)
+          
+          return_polys+=children_i
+    
+    return return_polys
 
 # ploys1: vector<ploygon>
 def ploys_boolean(polys1, polys2,action,ep):
@@ -346,7 +383,179 @@ def ploys_boolean(polys1, polys2,action,ep):
     print((t2-t1).total_seconds(),action)
     return polys
 
+#获取第一个为ADD的父亲节点
+def get_node_first_add_parent(node):    
+    parent = None
+    while 1:
+        parent = node['parent']
+        if parent == None or parent['node_type'] == NodeType.ADD.value:
+            break
+
+    return parent
+
+#获取包含自己以及自己所有子孙的add类型的节点
+def get_all_add_childs(node):
+    adds=[]
+
+    if node['node_type']==NodeType.ADD.value:
+        adds.append(node['id'])
+
+    if 'children' in node.keys():
+        for i in range(len(node['children'])):
+            node_i=node['children'][i]
+            adds_i = get_all_add_childs(node_i)
+            adds+=adds_i
+
+    return adds
+    
+def get_del_ids(node):
+    if node['node_boolean_subtract_type'] == DelType.ONLY_PARENT.value:
+        #获取第一个为ADD的父亲节点
+        parent = get_node_first_add_parent(node)
+        if parent==None:
+            return []
+        else:
+            return [parent['id']]
+    elif node['node_boolean_subtract_type'] == DelType.PARENT_AND_BROTHER.value:
+        parent = get_node_first_add_parent(node)
+        if parent==None:
+            return []
+        else:
+            dels=[parent['id']]
+            #获取父亲的直属第一层add子节点
+            if 'children' in node.keys():
+                for i in range(len(node['children'])):
+                    node_i=node['children'][i]
+                    if node_i['node_type']==NodeType.ADD.value:
+                        dels.append(node['id'])
+
+            return dels
+    elif node['node_boolean_subtract_type'] == DelType.PARENT_AND_CHILDRENS.value:
+        parent = get_node_first_add_parent(node)
+        if parent==None:
+            return []
+        else:
+            dels=get_all_add_childs(parent)
+
+            return dels
+    else:
+        #print("unsupport del type.")
+        return []
+
+#三个点组成的一个夹角，较短边外点到较长边的垂直距离如果小于1nm，则将中间的点替换成垂直相交的点
+def is_1nm_error(p1,p2,p3):
+    if p1==p2 or p2==p3:
+        return False,None
+    
+    #判断夹角
+    #计算斜率
+    '''m1=(p2.y-p1.y)/(p2.x-p1.x)
+    m2=(p3.y-p2.y)/(p3.x-p2.x)
+    angle=math.atan((m2-m1)/(1+m1*m2))
+    angle=math.degrees(angle)
+    if angle<10:
+        return False'''
+    
+    dis12 = (p1.x-p2.x)*(p1.x-p2.x)+(p1.y-p2.y)*(p1.y-p2.y)
+    dis23 = (p3.x-p2.x)*(p3.x-p2.x)+(p3.y-p2.y)*(p3.y-p2.y)
+
+    short_p=p1
+    long_p=p3
+    if dis12 > dis23:
+        short_p=p3
+        long_p=p1
+
+    x0=short_p.x
+    y0=short_p.y
+    x1=p2.x
+    y1=p2.y
+    x2=long_p.x
+    y2=long_p.y
+
+    k = -((x1 - x0) * (x2 - x1) + (y1 - y0) * (y2 - y1)) / ((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))
+    xf = k * (x2 - x1) + x1
+    yf = k * (y2 - y1) + y1
+    if k < 0 or k > 1:  #垂点不在线段上
+        return False,None
+
+    #判断垂线长度是否小于1nm
+    if abs(xf-x0)<=1 and abs(yf-y0)<=1:
+        xf=x0+math.ceil(xf-x0)
+        yf=y0+math.ceil(yf-y0)
+        return True,pya.Point(xf,yf)
+    return False,None
+
+#1nm误差 todo
+def repair_1nm(poly):
+    points=list(poly.each_point_hull())
+
+    if len(points)>2:
+        for i in range(len(points)-2):
+            is_1nm,p = is_1nm_error(points[i],points[i+1],points[i+2])
+            if is_1nm:
+                points[i+1] = p
+
+        # -2 -1 0
+        is_1nm,p = is_1nm_error(points[-2],points[-1],points[0])
+        if is_1nm:
+            points[-1] = p
+
+        # -1 0 1
+        is_1nm,p = is_1nm_error(points[-1],points[0],points[1])
+        if is_1nm:
+            points[0] = p
+
+    return pya.Polygon(points)
+
+#一层里面进行add和del，得到一层最后的ploys结果集（除以dbu放大后的结果）
 def get_result_polys(polys,dbu,ep):
+    layer_polys={}
+
+    ployid_maps={}
+    ployid_layer_maps={}
+    delid_maps={}
+    del_nodes=[]
+    for i in range(len(polys)):
+        poly=polys[i]
+        
+        poly_multi1k=poly['points']*(1.0/dbu)
+        poly_multi1k=pya.Polygon(poly_multi1k)
+
+        if poly['node_type'] == NodeType.ADD.value:
+            ployid_maps[poly['id']]=poly_multi1k
+            layer=poly['node']['layer']
+            ployid_layer_maps[poly['id']]=layer
+        elif poly['node_type'] == NodeType.DELETE.value:
+            delid_maps[poly['id']]=poly_multi1k
+            del_nodes.append(poly['node'])
+        else:
+            print("get_result_polys not support type")
+
+    del_ids={}  # id->需要做删除操作的polys
+    for node in del_nodes:
+        del_i = get_del_ids(node)
+        
+        for id in del_i:
+            if id not in del_ids:
+                del_ids[id]=[]
+
+            del_ids[id].append(delid_maps[node['id']])
+
+    #按图层进行切分
+    for id in ployid_maps.keys():
+        layer=ployid_layer_maps[id]
+        if layer not in layer_polys:
+            layer_polys[layer]=[]
+
+        if id not in del_ids:
+            layer_polys[layer].append(ployid_maps[id])
+        else:
+            result=ep.boolean_p2p([ployid_maps[id]],del_ids[id],pya.EdgeProcessor.ModeANotB,False,False)
+            layer_polys[layer]+=result            
+
+    return layer_polys
+
+def get_result_polys2(polys,dbu,ep):
     results=[]
     types=[]
     poly_multi1ks=[]
@@ -363,77 +572,53 @@ def get_result_polys(polys,dbu,ep):
 
     return_polys=[]
     for i in range(len(types)):
+        #t1=datetime.now()
         if types[i]==NodeType.ADD.value:
+            del_polys=[]
             for j in range(i+1,len(types)):
                 if types[j]==NodeType.DELETE.value:
-                    results[i]=ep.boolean_p2p(results[i],[poly_multi1ks[j]],pya.EdgeProcessor.ModeANotB,False,False)
+                    #results[i]=ep.boolean_p2p(results[i],[poly_multi1ks[j]],pya.EdgeProcessor.ModeANotB,False,False)
+                    del_polys.append(poly_multi1ks[j])
+
+            if len(del_polys)>0:
+                results[i]=ep.boolean_p2p(results[i],del_polys,pya.EdgeProcessor.ModeANotB,False,False)
+                    
         else:
             results[i]=[]
 
         return_polys += results[i]
+        #t2=datetime.now()
+        #print(i,(t2-t1).total_seconds(),len(list(poly_multi1ks[i].each_point_hull())))
     return return_polys
 
-# 将各层的poly按先后顺序进行加减操作,每个点进行相对坐标锚点位移
-def format_points(layer_points,coord_point,dbu=0.001):
+# 将各层的poly进行加减操作,每个点进行相对坐标锚点位移
+def format_points(polys,coord_point,dbu=0.001):
     points_results={}
     ep=pya.EdgeProcessor()
     tr = pya.DCplxTrans(1, 0, False, -coord_point.x, -coord_point.y) # mag, angel, mirrx, dx,dy
-    for k in layer_points:
-        points_arr=layer_points[k]
-        # 先按id排序
-        layer_points[k]=sorted(points_arr, key=lambda x: x['id'])
-        points_arr=layer_points[k]
+
+    layer_polys=get_result_polys(polys,dbu,ep)
+    for k in layer_polys:
+        results=layer_polys[k]
         # 再进行merge操作
         #t1=datetime.now()
-        results=get_result_polys(points_arr,dbu,ep)
-        '''
-        results=[]
-        for i in range(len(points_arr)):
-            if points_arr[i]['node_type']==NodeType.LOCATION.value:
-                continue
-            #由于boolean操作只支持int型point，所以先*1000，转pya.Point
-
-            #points_arr_multi1k=trans_scale(points_arr[i]['points'],1000)
-            #points_arr_multi1k=[pya.Point(p.x,p.y) for p in points_arr_multi1k]
-            #results=ploys_boolean(results,[pya.Polygon(points_arr_multi1k)],points_arr[i]['node_type'])
-            #ploy_multi1k=pya.DPolygon([pya.DPoint(p.x,p.y) for p in points_arr[i]['points']])*1000
-            ploy_multi1k=points_arr[i]['points']*(1.0/dbu)
-            ploy_multi1k=pya.Polygon(ploy_multi1k)
-            results=ploys_boolean(results,[ploy_multi1k],points_arr[i]['node_type'],ep)
-        '''
         results=ep.simple_merge_p2p(results,False,False)
         #t2=datetime.now()
         #print(k,(t2-t1).total_seconds())
 
         points_results[k]=[]
         for p in results:
+            #p = repair_1nm(p)
+
             p=pya.DPolygon(p)*dbu
             p=p.transformed(tr)
             points_results[k].append(p)
-        #points_results[k]=[pya.DPolygon(p)*0.001 for p in results]
-        #points_results[k]=[pya.DPolygon([DPoint(p.x/1000.0-coord_point.x,p.y/1000.0-coord_point.y) for p in results[i]]) for i in range(len(results))]
 
     return points_results
 
-def load_file(fname):
-    with open(fname,'r',encoding='utf-8') as file:
-        data=json.load(file)
-        
-    layer_points=get_node_points(data['primitive']['node'],None,{})
-    layer_polys=format_points(layer_points,Point(0,0))
-
-    return layer_polys
-
-# layer_maps={'Layer1':[1,0],'Layer2':[10,0]}
-def insert_ploys(layer_ploys,layer_maps,layout,cell):
-    for l in layer_ploys.keys():
-        l_layer=layout.layer(layer_maps[l][0], layer_maps[l][1])
-        for i in range(len(layer_ploys[l])):
-            cell.shapes(l_layer).insert(layer_ploys[l][i])
 
 
-#load_file("data.json")
-#exit()
+
 from ququan.QuquanPcellHelper import QuquanPcellHelper
 class QuquanShape(QuquanPcellHelper):
     def __init__(self,file_name):
@@ -468,7 +653,7 @@ class QuquanShape(QuquanPcellHelper):
 
         # 设置锚点
         anchors=self.data['primitive']['anchors']
-        anchors=sorted(anchors, key=lambda x: x['node_id'])
+        #anchors=sorted(anchors, key=lambda x: x['node_id'])
         for i in range(len(anchors)):
             self.add_anchor(anchors[i])
 
@@ -477,10 +662,12 @@ class QuquanShape(QuquanPcellHelper):
             self._init_layers.append(l['layer_name'])
         
     def get_layer_polys(self,dbu=0.001):
-        layer_points=get_node_points(self.data['primitive']['node'],None,self.get_exp_val)
-        layer_polys=format_points(layer_points,self._coordinate_point,dbu)
+        polys=get_node_points(self.data['primitive']['node'],None,self.get_exp_val,float(self.data['primitive']['arc']['length']),self._param_mgr) #POINT_DISTANCE
+        layer_polys=format_points(polys,self._coordinate_point,dbu)
 
         return layer_polys
+    
+    
 
     #设置初始值
     def set_param_defaults(self,datas):

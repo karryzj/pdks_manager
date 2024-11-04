@@ -32,11 +32,11 @@ private:
     mutable std::string m_outside_radius_exp;
 };
 
-class ShapSectoreFacotry final : public ShapeFactoryBase
+class ShapSectoreFactory final : public ShapeFactoryBase
 {
 public:
-    ShapSectoreFacotry();
-    ~ShapSectoreFacotry() override;
+    ShapSectoreFactory();
+    ~ShapSectoreFactory() override;
 
     ShapeBase *create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const override;
 };

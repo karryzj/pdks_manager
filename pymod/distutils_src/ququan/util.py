@@ -44,6 +44,9 @@ def register_and_draw_pcell(pcell,file_path=''):
     try:
         file_path=os.path.dirname(file_path)
         #print(file_path)
+        if not klayout.lay or not klayout.lay.MyView or not klayout.lay.MyView.view:
+            return
+        
         view=klayout.lay.MyView.view()
         view.cancel()
 
@@ -75,7 +78,7 @@ def register_and_draw_pcell(pcell,file_path=''):
         png_file=file_path+"/thumbnail.png"
         view.save_image(png_file,500,500)
 
-        make_background_transparent(png_file)
+        #make_background_transparent(png_file)
 
     except:
         pass
@@ -88,9 +91,12 @@ def write_pcell_info(pcell,file_name):
     params=[]
     for i in range(len(pcell._param_decls)):
             p=pcell._param_decls[i]
-            #只保存可修改的 double和int类型的参数
-            if not p.readonly and not p.hidden and (p.type == type(pcell).TypeDouble or p.type == type(pcell).TypeInt):
-                params.append({"name":p.name,"value":p.default})
+            if not pcell.is_mgr_param(p.name):
+                continue
+
+            #只保存可修改的 double和int类型的参数 #not p.readonly and 
+            if not p.hidden and (p.type == type(pcell).TypeDouble or p.type == type(pcell).TypeInt or p.type == type(pcell).TypeString):
+                params.append({"key":p.name,"value":str(p.default),"desc":p.description})
 
     layers=[]
     if hasattr(pcell,'layer_maps'):
@@ -98,11 +104,25 @@ def write_pcell_info(pcell,file_name):
             layers.append(k)
         pass
 
+    rules=[]
+    if hasattr(pcell,'_rules'):
+        rules = pcell._rules
+
+    anchors=[]
+    if hasattr(pcell,'_anchors'):
+        anchors = pcell._anchors
+        for i in range(len(anchors)):
+            anchors[i]['x']=str(anchors[i]['x'])
+            anchors[i]['y']=str(anchors[i]['y'])
+    
     #current_directory = os.path.dirname(__file__)
     #file_name=current_directory+"/info.json"
 
-    data['params']=params
-    data['layers']=layers
+    data['param_rules']={}
+    data['param_rules']['params']=params   
+    data['param_rules']['rules']=rules 
+    data['layers']=layers    
+    data['anchors']=anchors
     with open(file_name, "w") as file:
       json.dump(data, file)
 

@@ -39,7 +39,8 @@ at::AttachTreeNodeId PriAttachTreeNodeMgr::register_tree_node(
     at::AttachTreeNode* new_tree_node)
 {
     // 检查是否是未处理过的新id
-    Q_ASSERT(new_tree_node->id() == INVALID_ATTACH_TREE_NODE_ID);
+    if (new_tree_node->id() != INVALID_ATTACH_TREE_NODE_ID)
+        return new_tree_node->id();
 
     // 分配新Id
     auto new_tree_node_id = allocate_new_id();
@@ -58,40 +59,23 @@ void PriAttachTreeNodeMgr::unregister_tree_node(const at::AttachTreeNodeId&
     auto tree_node = m_dic_node[tree_node_id];
     m_dic_node.remove(tree_node_id);
 
-    update_all();
+    update();
+}
 
-    emit update_anchor();
+AttachTreeNode *PriAttachTreeNodeMgr::query(const at::AttachTreeNodeId &tree_node_id)
+{
+    auto itor = m_dic_node.find(tree_node_id);
+    if(itor == m_dic_node.end())
+    {
+        return nullptr;
+    }
+
+    return itor.value();
 }
 
 void pr::PriAttachTreeNodeMgr::set_tree_root_node(at::AttachTreeRootNode *root_node)
 {
     mp_root_node = root_node;
-}
-
-void PriAttachTreeNodeMgr::on_set_node_type(const at::AttachTreeNodeId&
-        tree_node_id)
-{
-    update_all();
-}
-
-void PriAttachTreeNodeMgr::on_set_node_direction(const at::AttachTreeNodeId& tree_node_id)
-{
-    // 这种情况直接更新进行计算就行
-    update_all();
-}
-
-void PriAttachTreeNodeMgr::on_set_layer_info(const at::AttachTreeNodeId&
-        tree_node_id)
-{
-    update_all();
-}
-
-void PriAttachTreeNodeMgr::on_set_params(const at::AttachTreeNodeId& tree_node_id)
-{
-    // 这种情况直接更新进行计算就行
-    update_all();
-
-    emit update_anchor();
 }
 
 AttachTreeNodeId PriAttachTreeNodeMgr::allocate_tree_node_new_id(const at::AttachTreeNodeId &tree_node_id)
@@ -156,7 +140,7 @@ void PriAttachTreeNodeMgr::adjust_point_items_position_and_setup_visible(const a
     {
         auto point_item = point_items[i];
 
-        QPointF point = AttachTreeUtils::attach_point(current_tree_node, i, true);
+        QPointF point = AttachTreeUtils::attach_point_coord(current_tree_node, i, true);
 
         point_item->set_new_position(mp_viewport->map_to_scene(point));
         if(point_item ->shape_item() != nullptr)
@@ -170,73 +154,272 @@ void PriAttachTreeNodeMgr::adjust_point_items_position_and_setup_visible(const a
 
 void PriAttachTreeNodeMgr::update_all()
 {
-    SCOPE_TIMER("update_all");
-    static int count = 0;
-    count++;
-    qDebug() << "第" << count << "次更新";
-
-    // 第一次循环只处理add类型的节点
-    for(auto itor = m_dic_node.begin(); itor != m_dic_node.end(); itor++)
+    if(false)  // 时序排列的delete逻辑
     {
-        auto current_node_id = itor.key();
+        SCOPE_TIMER("update_all");
+        static int count = 0;
+        count++;
+        qDebug() << "第" << count << "次更新";
 
-        at::AttachTreeNode* current_node = itor.value();
-        if(current_node->node_type() == NodeType::ADD)
+        auto view = mp_root_node->view();
+        // 获取视图的可视区域
+        QRectF view_rect;
+        if(view)
         {
-            QVector<int> delete_ids;
-            auto add_tree_node_path = global_painter_path(current_node_id);
-            add_tree_node_path = add_tree_node_path.simplified();
-            QPainterPath delete_nodes_path;
-            QVector<QPainterPath> delete_tree_node_paths;
-            for(auto next_itor = (itor + 1); next_itor != m_dic_node.end(); next_itor++)
+            view_rect = mp_root_node->view()->mapToScene(mp_root_node->view()->viewport()->rect()).boundingRect();
+        }
+        else
+        {
+            return;
+        }
+        // 第一次循环只处理add类型的节点
+        for(auto itor = m_dic_node.begin(); itor != m_dic_node.end(); itor++)
+        {
+            auto current_node_id = itor.key();
+
+            at::AttachTreeNode* current_node = itor.value();
+            if(current_node->node_type() == NodeType::ADD)
             {
-                auto next_node_id = next_itor.key();
-                at::AttachTreeNode* next_node = next_itor.value();
-                if(next_node->node_type() != NodeType::DELETE)
+                QVector<int> delete_ids;
+                auto add_tree_node_path = global_painter_path(current_node_id);
+                QRectF add_tree_node_path_bounding_rect = add_tree_node_path.boundingRect();
+                if (!view_rect.intersects(add_tree_node_path_bounding_rect))
                 {
+                    current_node->shape_item()->set_painter_path(QPainterPath{});  // HINT@leixunyong。不用绘制了。
                     continue;
                 }
-
-                if(next_node->layer_info() != current_node->layer_info())
+                QPainterPath delete_nodes_path;
+                QVector<QPainterPath> delete_tree_node_paths;
+                for(auto next_itor = (itor + 1); next_itor != m_dic_node.end(); next_itor++)
                 {
-                    continue;
-                }
-                auto delete_tree_node_path = global_painter_path(next_node_id);
-                delete_tree_node_path = delete_tree_node_path.simplified();
-                delete_tree_node_paths.push_back(delete_tree_node_path);
-                //delete_nodes_path = delete_nodes_path.united(delete_tree_node_path);
-            }
-            bool user_define_boolean_substracted = true;  // HINT@leixunyong。方便调试。
-            if(user_define_boolean_substracted)
-            {
-                add_tree_node_path = sp::ShapeDrawBooleanProcessor::boolean_substraction_opera(add_tree_node_path, delete_tree_node_paths);
-            }
-            else
-            {
-                add_tree_node_path = add_tree_node_path.subtracted(delete_nodes_path);
-            }
+                    auto next_node_id = next_itor.key();
+                    at::AttachTreeNode* next_node = next_itor.value();
+                    if(next_node->node_type() != NodeType::DELETE)
+                    {
+                        continue;
+                    }
 
-            current_node->shape_item()->set_painter_path(add_tree_node_path);
-            current_node->shape_item()->set_paint_type(sp::PaintType::DRAW);
+                    if(next_node->layer_info() != current_node->layer_info())
+                    {
+                        continue;
+                    }
+                    auto delete_tree_node_path = global_painter_path(next_node_id);
+                    QRectF delete_tree_node_path_bounding_rect = delete_tree_node_path.boundingRect();
+
+                    // 判断delete图形是否与add图形有交集
+                    if (!add_tree_node_path_bounding_rect.intersects(delete_tree_node_path_bounding_rect))
+                    {
+                        continue;  // 如果没有交集，直接跳过不处理
+                    }
+
+                    delete_tree_node_paths.push_back(delete_tree_node_path);
+                    //delete_nodes_path = delete_nodes_path.united(delete_tree_node_path);
+                }
+                bool user_define_boolean_substracted = true;  // HINT@leixunyong。方便调试。
+                if(user_define_boolean_substracted)
+                {
+                    add_tree_node_path = sp::ShapeDrawBooleanProcessor::boolean_substraction_opera(add_tree_node_path, delete_tree_node_paths);
+                }
+                else
+                {
+                    add_tree_node_path = add_tree_node_path.subtracted(delete_nodes_path);
+                }
+                add_tree_node_path.closeSubpath();
+                current_node->shape_item()->set_painter_path(add_tree_node_path);
+                current_node->shape_item()->set_paint_type(sp::PaintType::DRAW);
+            }
+        }
+
+        // 第二次循环只绘制delete和location的节点
+        for(auto itor = m_dic_node.begin(); itor != m_dic_node.end(); itor++)
+        {
+            auto current_node_id = itor.key();
+            at::AttachTreeNode* current_node = itor.value();
+
+            if(current_node->node_type() == NodeType::DELETE)
+            {
+                current_node->shape_item()->set_painter_path(global_painter_path(current_node_id));
+                current_node->shape_item()->set_paint_type(sp::PaintType::DASH);
+            }
+            else if(current_node->node_type() == NodeType::LOCATION)
+            {
+                auto shape_item = current_node->shape_item();
+                shape_item->set_painter_path(global_painter_path(current_node_id));
+                shape_item->set_paint_type(sp::PaintType::DRAW);
+            }
         }
     }
-
-    // 第二次循环只绘制delete和location的节点
-    for(auto itor = m_dic_node.begin(); itor != m_dic_node.end(); itor++)
+    else
     {
-        auto current_node_id = itor.key();
-        at::AttachTreeNode* current_node = itor.value();
-
-        if(current_node->node_type() == NodeType::DELETE)
+        // TODO@leixunyong。这里没有进行性能优化，后续再进行。
+        QMap<at::AttachTreeNodeId, QPainterPath> dic;
+        for(auto itor = m_dic_node.begin(); itor != m_dic_node.end(); itor++)
         {
-            current_node->shape_item()->set_painter_path(global_painter_path(current_node_id));
-            current_node->shape_item()->set_paint_type(sp::PaintType::DASH);
+            auto current_node_id = itor.key();
+            auto node_path =  global_painter_path(current_node_id);
+            dic[current_node_id] = node_path;
         }
-        else if(current_node->node_type() == NodeType::LOCATION)
+
+        // 获得距离delete node最近的add类型父亲
+        auto delete_nodes_parent = [&](AttachTreeNode* delete_node)
         {
-            auto shape_item = current_node->shape_item();
-            shape_item->set_painter_path(global_painter_path(current_node_id));
-            shape_item->set_paint_type(sp::PaintType::DRAW);
+            AttachTreeNode * parent_tree_node = nullptr;
+
+            // 找到最近的add类型的父亲节点
+            while(true)
+            {
+                AttachTreeBaseNode* parent_node = nullptr;
+                if(nullptr == parent_tree_node)
+                {
+                    parent_node = delete_node->parent_node();
+                    parent_tree_node = dynamic_cast<AttachTreeNode*>(parent_node);
+                }
+                else
+                {
+                    parent_node = parent_tree_node->parent_node();
+                    parent_tree_node = dynamic_cast<AttachTreeNode*>(parent_node);
+                }
+
+                if(nullptr == parent_tree_node)
+                {
+                    break;
+                }
+
+                if(parent_tree_node->node_type() == NodeType::ADD)
+                {
+                    break;
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            return parent_tree_node;
+        };
+
+        // 查找自己的父节点，进行delete
+        auto delete_parent = [&](AttachTreeNode* delete_node)
+        {
+            auto parent_tree_node = delete_nodes_parent(delete_node);
+            if(nullptr == parent_tree_node)
+            {
+                return;
+            }
+
+            auto parent_id = parent_tree_node->id();
+            auto add_path = dic[parent_id];
+            auto delete_path = QVector<QPainterPath> {dic[delete_node->id()]};
+            add_path = sp::ShapeDrawBooleanProcessor::boolean_substraction_opera(add_path, delete_path);
+            dic[parent_id] = add_path;
+            return;
+        };
+
+        // 查找父节点的第一层子节点进行delete
+        auto delete_brother = [&](AttachTreeNode* delete_node)
+        {
+            auto parent_tree_node = delete_nodes_parent(delete_node);
+            if(nullptr == parent_tree_node)
+            {
+                return;
+            }
+
+            const QMap<int, QVector<at::AttachTreeNode *> > & brothers = parent_tree_node->children();
+            for(auto itor = brothers.begin(); itor != brothers.end(); itor++)
+            {
+                const QVector<at::AttachTreeNode *> & brother_nodes = itor.value();
+                for(auto brother_node : brother_nodes)
+                {
+                    if(brother_node->node_type() == at::NodeType::ADD)
+                    {
+                        auto add_path = dic[brother_node->id()];
+                        auto delete_path = QVector<QPainterPath> {dic[delete_node->id()]};
+                        add_path = sp::ShapeDrawBooleanProcessor::boolean_substraction_opera(add_path, delete_path);
+                        dic[brother_node->id()] = add_path;
+                    }
+                }
+            }
+            return;
+        };
+        // 查找父节点的全部子节点
+        auto delete_children = [&](AttachTreeNode* delete_node)
+        {
+            auto parent_tree_node = delete_nodes_parent(delete_node);
+            if(nullptr == parent_tree_node)
+            {
+                return;
+            }
+
+            const std::function<void(AttachTreeBaseNode*)>& proc = [&](AttachTreeBaseNode* child_node)
+            {
+                if(parent_tree_node == child_node)
+                {
+                    return;
+                }
+
+                auto child_tree_node = dynamic_cast<AttachTreeNode*>(child_node);
+                if(nullptr == child_tree_node)
+                {
+                    return;
+                }
+
+                if(child_tree_node->node_type() == at::NodeType::ADD)
+                {
+                    auto add_path = dic[child_tree_node->id()];
+                    auto delete_path = QVector<QPainterPath> {dic[delete_node->id()]};
+                    add_path = sp::ShapeDrawBooleanProcessor::boolean_substraction_opera(add_path, delete_path);
+                    dic[child_tree_node->id()] = add_path;
+                }
+                return;
+            };
+
+            parent_tree_node->traversal_subtree(proc);
+        };
+
+        for(auto itor = m_dic_node.begin(); itor != m_dic_node.end(); itor++)
+        {
+            auto current_node_id = itor.key();
+            at::AttachTreeNode* current_node = itor.value();
+            if(current_node->node_type() == NodeType::DELETE)
+            {
+                auto boolean_subtract_type = current_node->node_boolean_subtract_type();
+                if(boolean_subtract_type == NodeBooleanSubtractType::ONLY_WITH_PARENT_NODE)
+                {
+                    delete_parent(current_node);
+                }
+                else if(boolean_subtract_type == NodeBooleanSubtractType::WITH_PARENT_AND_BROTHER_NODE)
+                {
+                    delete_parent(current_node);
+                    delete_brother(current_node);
+                }
+                else if(boolean_subtract_type == NodeBooleanSubtractType::WITH_PARENT_AND_CHILD_NODE)
+                {
+                    delete_parent(current_node);
+                    delete_children(current_node);
+                }
+
+                current_node->shape_item()->set_painter_path(global_painter_path(current_node_id));
+                current_node->shape_item()->set_paint_type(sp::PaintType::DASH);
+            }
+            else if(current_node->node_type() == NodeType::LOCATION)
+            {
+                auto shape_item = current_node->shape_item();
+                shape_item->set_painter_path(global_painter_path(current_node_id));
+                shape_item->set_paint_type(sp::PaintType::DRAW);
+            }
+        }
+
+        // 处理add类型的节点
+        for(auto itor = m_dic_node.begin(); itor != m_dic_node.end(); itor++)
+        {
+            auto node_id = itor.key();
+            auto node = itor.value();
+            const auto& path = dic[node_id];
+            if(node->node_type() == at::NodeType::ADD)
+            {
+                node->shape_item()->set_painter_path(path);
+                node->shape_item()->set_paint_type(sp::PaintType::DRAW);
+            }
         }
     }
 

@@ -24,11 +24,11 @@ private:
     mutable std::string m_radius_exp;
 };
 
-class ShapeCircleFacotry final : public ShapeFactoryBase
+class ShapeCircleFactory final : public ShapeFactoryBase
 {
 public:
-    ShapeCircleFacotry();
-    ~ShapeCircleFacotry() override;
+    ShapeCircleFactory();
+    ~ShapeCircleFactory() override;
 
     ShapeBase *create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const override;
 };

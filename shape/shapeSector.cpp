@@ -58,12 +58,13 @@ void ShapeSector::update_variables()
 
 void ShapeSector::update_attach_pointes()
 {
+    pm::Expression diameter = pm::Expression(m_outside_radius_exp.c_str()) * 2;
     m_attach_points_e =
     {
-        pm::PointE(-pm::Expression(m_outside_radius_exp.c_str()), m_outside_radius_exp),
-        pm::PointE(-pm::Expression(m_outside_radius_exp.c_str()), -pm::Expression(m_outside_radius_exp.c_str())),
-        pm::PointE(m_outside_radius_exp, -pm::Expression(m_outside_radius_exp.c_str())),
-        pm::PointE(m_outside_radius_exp, m_outside_radius_exp),
+        pm::PointE(pm::Expression("0"), diameter),
+        pm::PointE(pm::Expression("0"), pm::Expression("0")),
+        pm::PointE(diameter, pm::Expression("0")),
+        pm::PointE(diameter, diameter),
     };
 }
 
@@ -102,21 +103,24 @@ QPainterPath ShapeSector::build_path()
     sector_path.lineTo(out_start_point);                                    // 从内圈起点到外圈起点
     // circle_path.arcMoveTo(in_ellipse_rect, startAngle);
     sector_path.closeSubpath(); // 闭合路径
+
+    sector_path.translate(m_outside_radius, m_outside_radius);
+
     return sector_path;
 }
 
-ShapSectoreFacotry::ShapSectoreFacotry()
+ShapSectoreFactory::ShapSectoreFactory()
     : ShapeFactoryBase()
 {
 
 }
 
-ShapSectoreFacotry::~ShapSectoreFacotry()
+ShapSectoreFactory::~ShapSectoreFactory()
 {
 
 }
 
-ShapeBase *ShapSectoreFacotry::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
+ShapeBase *ShapSectoreFactory::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
 {
     return new ShapeSector(param_mgr, params, parent_attach_point);
 }

@@ -2,6 +2,7 @@
 #include <AttachTreeUtils.h>
 #include <PointE.h>
 #include <QGraphicsView>
+#include <ShapeDecl.h>
 #include <viewport.h>
 
 #include "attachTreeNode.h"
@@ -10,27 +11,31 @@
 #include "shapeBase.h"
 #include "shapeFactory.h"
 #include "shapePointGraphicsItem.h"
-#include "redoService.h"
+// #include "redoService.h"
 #include "attachTreeNodeMgr.h"
 #include "ParamDecl.h"
+
+#include "shapeDefines.h"
+#include "expression.h"
 
 using namespace at;
 
 AttachTreeNode::AttachTreeNode(AttachTreeBaseNode* parent,
-                               int parent_attach_point_idx,               // 为-1的时候，此节点为根节点,
-                               const QString& shape_name,                 // 图形类型
-                               const QVector<pm::ParamDecl> & params,    // 所创建图形的参数
-                               NodeType node_type,                        // 控制是辅助定位，还是增加、减去。
-                               NodeDirection
-                               node_dirction,                             // 放在局部坐标系的四个方位的哪一个
-                               ly::LayerInfo* layer,                      // 图层信息，用于填充
-                               bool connect_with_mw)                      // 用来绘制图形的GraphicsView
+                               int parent_attach_point_idx,
+                               const QString& shape_name,
+                               const QVector<pm::ParamDecl> & params,
+                               NodeType node_type,
+                               NodeDirection node_dirction,
+                               NodeBooleanSubtractType node_boolean_subtra_type,
+                               ly::LayerInfo* layer,
+                               bool connect_with_mw)
     : AttachTreeBaseNode()
     , mp_parent(parent)
     , m_parent_attach_point_idx(parent_attach_point_idx)
     , m_shape_name(shape_name)
     , m_node_type(node_type)
     , m_node_direction(node_dirction)
+    , m_node_bool_subtraction(node_boolean_subtra_type)
     , mp_layer_info(layer)
     , m_connect_with_mw(connect_with_mw)
 {
@@ -119,10 +124,9 @@ void AttachTreeNode::set_node_type(NodeType node_type)
     }
 
     m_node_type = node_type;
-    tree_node_mgr()->on_set_node_type(m_tree_node_id);
 
     //for redo
-    cm::RedoService::instance()->queue(this, new SetNodeTypeOp(old_node_type, m_node_type));
+    // cm::RedoService::instance()->queue(this, new SetNodeTypeOp(old_node_type, m_node_type));
 }
 
 NodeType AttachTreeNode::node_type() const
@@ -140,16 +144,24 @@ void AttachTreeNode::set_node_direction(NodeDirection node_direction)
     }
 
     m_node_direction = node_direction;
-    tree_node_mgr()->on_set_node_direction(m_tree_node_id);
-    update();
 
     //for redo
-    cm::RedoService::instance()->queue(this, new SetDirectionOp(old_dire, m_node_direction));
+    // cm::RedoService::instance()->queue(this, new SetDirectionOp(old_dire, m_node_direction));
 }
 
 NodeDirection AttachTreeNode::node_direction() const
 {
     return m_node_direction;
+}
+
+void AttachTreeNode::set_node_boolean_subtract_type(NodeBooleanSubtractType node_direction)
+{
+    m_node_bool_subtraction = node_direction;
+}
+
+NodeBooleanSubtractType AttachTreeNode::node_boolean_subtract_type() const
+{
+    return m_node_bool_subtraction;
 }
 
 void AttachTreeNode::set_layer_info(ly::LayerInfo* layer_info)
@@ -163,10 +175,9 @@ void AttachTreeNode::set_layer_info(ly::LayerInfo* layer_info)
 
     mp_layer_info = layer_info;
     shape_item()->set_layer_info(mp_layer_info);
-    tree_node_mgr()->on_set_layer_info(m_tree_node_id);
 
     //for redo
-    cm::RedoService::instance()->queue(this, new SetLayerOp(old_layer, mp_layer_info));
+    // cm::RedoService::instance()->queue(this, new SetLayerOp(old_layer, mp_layer_info));
 }
 
 ly::LayerInfo* AttachTreeNode::layer_info() const
@@ -212,12 +223,8 @@ void AttachTreeNode::set_params(const QVector<pm::ParamDecl> & params)
     auto old_params = mp_shape->params();
     mp_shape->set_new_params(params);
     update();
-    if(update_children())
-    {
-        tree_node_mgr()->on_set_params(m_tree_node_id);
-    }
     //for redo
-    cm::RedoService::instance()->queue(this, new SetParamsOp(old_params, params));
+    // cm::RedoService::instance()->queue(this, new SetParamsOp(old_params, params));
 }
 
 void AttachTreeNode::update()
@@ -271,7 +278,7 @@ void AttachTreeNode::update_trans()
     auto tree_node = dynamic_cast<AttachTreeNode*>(mp_parent);
     if(tree_node)
     {
-        QPointF at_pt = AttachTreeUtils::attach_point(tree_node, get_parent_attach_point_idx(), false);
+        QPointF at_pt = AttachTreeUtils::attach_point_coord(tree_node, get_parent_attach_point_idx(), false);
         QTransform trans = mp_parent->transform();
         trans.translate(at_pt.x(), at_pt.y());
         set_transform(trans);
@@ -285,7 +292,7 @@ void AttachTreeNode::update_trans()
     // attch point exp
     if(tree_node)
     {
-        pm::PointE point = AttachTreeUtils::attach_exp_point(tree_node, get_parent_attach_point_idx(), false);
+        pm::PointE point = AttachTreeUtils::attach_exp_point_coord(tree_node, get_parent_attach_point_idx(), false);
         auto exp_trans = mp_parent->transorm_for_expression();
         exp_trans.translate(point.x(), point.y());
         set_transform_for_expression(exp_trans);
@@ -297,6 +304,7 @@ void AttachTreeNode::update_trans()
     }
 }
 
+#if 0
 void at::AttachTreeNode::undo(db::Op *op)
 {
     SetParamsOp  *p_op = dynamic_cast<SetParamsOp*>(op);
@@ -304,7 +312,6 @@ void at::AttachTreeNode::undo(db::Op *op)
     {
         auto params = p_op->old_params();
         mp_shape->set_new_params(params);
-        tree_node_mgr()->on_set_params(m_tree_node_id);
     }
 
     SetLayerOp *l_op = dynamic_cast<SetLayerOp*>(op);
@@ -312,19 +319,16 @@ void at::AttachTreeNode::undo(db::Op *op)
     {
         mp_layer_info = l_op->old_layer();
         shape_item()->set_layer_info(mp_layer_info);
-        tree_node_mgr()->on_set_layer_info(m_tree_node_id);
     }
     SetNodeTypeOp *t_op = dynamic_cast<SetNodeTypeOp*>(op);
     if(t_op)
     {
         m_node_type = t_op->old_type();
-        tree_node_mgr()->on_set_node_type(m_tree_node_id);
     }
     SetDirectionOp *d_op = dynamic_cast<SetDirectionOp*>(op);
     if(d_op)
     {
         m_node_direction = d_op->old_dire();
-        tree_node_mgr()->on_set_node_direction(m_tree_node_id);
     }
 
     update();
@@ -338,7 +342,6 @@ void AttachTreeNode::redo(db::Op *op)
     {
         auto params = p_op->new_params();
         mp_shape->set_new_params(params);
-        tree_node_mgr()->on_set_params(m_tree_node_id);
     }
 
     SetLayerOp *l_op = dynamic_cast<SetLayerOp*>(op);
@@ -346,24 +349,22 @@ void AttachTreeNode::redo(db::Op *op)
     {
         mp_layer_info = l_op->new_layer();
         shape_item()->set_layer_info(mp_layer_info);
-        tree_node_mgr()->on_set_layer_info(m_tree_node_id);
     }
     SetNodeTypeOp *t_op = dynamic_cast<SetNodeTypeOp*>(op);
     if(t_op)
     {
         m_node_type = t_op->new_type();
-        tree_node_mgr()->on_set_node_type(m_tree_node_id);
     }
     SetDirectionOp *d_op = dynamic_cast<SetDirectionOp*>(op);
     if(d_op)
     {
         m_node_direction = d_op->new_dire();
-        tree_node_mgr()->on_set_node_direction(m_tree_node_id);
     }
 
     update();
     tree_node_mgr()->update();
 }
+#endif
 
 pm::ParamMgr *at::AttachTreeNode::param_mgr() const
 {
@@ -389,6 +390,8 @@ void AttachTreeNode::set_new_parent_node(AttachTreeBaseNode *new_parent, int par
 {
     mp_parent = new_parent;
     m_parent_attach_point_idx = parent_index;
+    if (!new_parent)
+        return;
 
     // 创建Shape
     sp::ShapePointGraphicsItem* parent_attach_point = nullptr;
@@ -448,4 +451,146 @@ bool AttachTreeNode::is_coord_point(int attach_point_idx) const
 const QString &AttachTreeNode::shape_name() const
 {
     return m_shape_name;
+}
+
+void at::AttachTreeNode::set_shape_name(const QString &new_shape_name)
+{
+    if(m_shape_name == new_shape_name ||  m_shape_name != SHAPE_RECTANGLE || m_node_type != NodeType::LOCATION || mp_shape == nullptr)
+    {
+        return;
+    }
+
+    auto old_shape = mp_shape;
+    const QVector<pm::ParamDecl>& old_params = old_shape->params();
+    QString old_rectangle_width;
+    QString old_rectangle_height;
+    QString old_rectangle_rotate;
+    for(const auto& param : old_params)
+    {
+        const auto& key = param.key();
+        const auto& exp = param.expression();
+        if(key == SHAPE_RECTANGLE_WIDTH)
+        {
+            old_rectangle_width = exp;
+        }
+        else if(key == SHAPE_RECTANGLE_HEIGHT)
+        {
+            old_rectangle_height = exp;
+        }
+        else if(key == SHAPE_ROTATE)
+        {
+            old_rectangle_rotate = exp;
+        }
+        else
+        {
+            Q_ASSERT(false);
+        }
+    }
+
+    double width = pm::Expression(old_rectangle_width).to_double(old_shape->param_mgr());
+    double height = pm::Expression(old_rectangle_height).to_double(old_shape->param_mgr());
+
+    bool is_width_num = pm::Expression::is_num(old_rectangle_width);
+    bool is_height_num = pm::Expression::is_num(old_rectangle_height);
+
+    QString priority_parameter_expression;
+    if(is_width_num && is_height_num)
+    {
+        priority_parameter_expression = (width > height ? old_rectangle_width : old_rectangle_height);
+    }
+    else if(!is_width_num && is_height_num)
+    {
+        priority_parameter_expression = old_rectangle_width;
+    }
+    else if(is_width_num && !is_height_num)
+    {
+        priority_parameter_expression = old_rectangle_height;
+    }
+    else if(!is_width_num && !is_height_num)
+    {
+        priority_parameter_expression = (width > height ? old_rectangle_width : old_rectangle_height);
+    }
+
+
+    QVector<pm::ParamDecl> params;
+    if(new_shape_name == SHAPE_CIRCLE)
+    {
+        pm::Expression radius_exp = pm::Expression(priority_parameter_expression) * 0.5;
+        pm::ParamDecl param_radius(SHAPE_CIRCLE_RADIUS, radius_exp.to_str());
+        params.push_back(param_radius);
+    }
+    else if(new_shape_name == SHAPE_ELLIPSE)
+    {
+        pm::Expression semi_major_axis_exp = pm::Expression(old_rectangle_width) * 0.5;
+        QString semi_major_axis = semi_major_axis_exp.to_str();
+        pm::Expression semi_minor_axis_exp = pm::Expression(old_rectangle_height) * 0.5;
+        QString semi_minor_axis = semi_minor_axis_exp.to_str();
+
+        pm::ParamDecl param_semi_major_axis(SHAPE_ELLIPSE_SEMI_MAJOR_AXIS, semi_major_axis);
+        pm::ParamDecl param_semi_minor_axis(SHAPE_ELLIPSE_SEMI_MINOR_AXIS, semi_minor_axis);
+        pm::ParamDecl param_start_angle(SHAPE_ELLIPSE_START_ANGLE, 0);
+        pm::ParamDecl param_end_angle(SHAPE_ELLIPSE_END_ANGLE, 0);
+
+        params.push_back(param_semi_major_axis);
+        params.push_back(param_semi_minor_axis);
+        params.push_back(param_start_angle);
+        params.push_back(param_end_angle);
+
+    }
+    else if(new_shape_name == SHAPE_QUADRANGLE)
+    {
+        pm::ParamDecl param_width(SHAPE_QUADRANGLE_WIDTH, old_rectangle_width);
+        pm::ParamDecl param_height(SHAPE_QUADRANGLE_HEIGHT, old_rectangle_height);
+        pm::ParamDecl param_parameter_1(SHAPE_QUADRANGLE_PARAMETER_1, 0);
+        pm::ParamDecl param_parameter_2(SHAPE_QUADRANGLE_PARAMETER_2, 0);
+        pm::ParamDecl param_parameter_3(SHAPE_QUADRANGLE_PARAMETER_3, 0);
+        pm::ParamDecl param_parameter_4(SHAPE_QUADRANGLE_PARAMETER_4, 0);
+
+        params.push_back(param_width);
+        params.push_back(param_height);
+        params.push_back(param_parameter_1);
+        params.push_back(param_parameter_2);
+        params.push_back(param_parameter_3);
+        params.push_back(param_parameter_4);
+    }
+    else if(new_shape_name == SHAPE_SECTOR)
+    {
+        pm::Expression out_radius_exp = pm::Expression(priority_parameter_expression) * 0.5;
+
+        pm::ParamDecl param_inside_radius(SHAPE_SECTOR_INSIDE_RADIUS, 0);
+        pm::ParamDecl param_outside_radius(SHAPE_SECTOR_OUTSIDE_RADIUS, out_radius_exp.to_str());
+        pm::ParamDecl param_start_angle(SHAPE_SECTOR_START_ANGLE, 0);
+        pm::ParamDecl param_end_angle(SHAPE_SECTOR_END_ANGLE, 90);
+
+        params.push_back(param_inside_radius);
+        params.push_back(param_outside_radius);
+        params.push_back(param_start_angle);
+        params.push_back(param_end_angle);
+    }
+    else if(new_shape_name == SHAPE_TRIANGLE)
+    {
+        pm::ParamDecl param_width(SHAPE_TRIANGLE_WIDTH, old_rectangle_width);
+        pm::ParamDecl param_height(SHAPE_TRIANGLE_HEIGHT, old_rectangle_height);
+
+        params.push_back(param_width);
+        params.push_back(param_height);
+    }
+    else
+    {
+        return;
+    }
+    pm::ParamDecl param_rotate(SHAPE_ROTATE, old_rectangle_rotate);
+    params.push_back(param_rotate);
+
+    auto new_shape = sp::ShapeFactory::instance()->create_shape(new_shape_name, mp_parent->param_mgr(), params, old_shape->parent_attach_point());
+
+    new_shape->replace_graphics_items(old_shape);
+
+    new_shape->shape_graphics_item()->set_layer_info(mp_layer_info);
+    mp_shape = new_shape;
+    m_shape_name = new_shape_name;
+
+    SAFE_DELETE(old_shape);
+
+    update();
 }

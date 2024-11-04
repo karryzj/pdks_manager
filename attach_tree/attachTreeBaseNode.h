@@ -34,7 +34,7 @@ namespace at
 {
 class AttachTreeNodeMgr;
 class AttachTreeNode;  // HINT@leixunyong。这么写不太符合设计规则，不够美观，但是从功能上看是难以避免的。
-class AT_PUBLIC AttachTreeBaseNode : public QObject, public db::Object
+class AT_PUBLIC AttachTreeBaseNode : public QObject
 {
     Q_OBJECT
 public:
@@ -49,8 +49,8 @@ public:
     virtual void update() = 0;
 
 
-    virtual void undo (db::Op * /*op*/) {}
-    virtual void redo (db::Op * /*op*/) {}
+    // virtual void undo (db::Op * /*op*/) {}
+    // virtual void redo (db::Op * /*op*/) {}
 
 public:
     const QTransform& transform() const;
@@ -64,6 +64,7 @@ public:
                               const QVector<pm::ParamDecl> & params,
                               NodeType node_type,
                               NodeDirection node_direction,
+                              NodeBooleanSubtractType node_boolean_subtract_type,
                               ly::LayerInfo* layer);
 
     void add_child(AttachTreeNode* new_child_tree_node, int point_index);

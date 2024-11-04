@@ -114,13 +114,14 @@ private:
     // parent只有当创建AttachTree类型的节点的时候才能为空指针。
     AttachTreeNode(
         AttachTreeBaseNode* parent,
-        int parent_attach_point_idx,               // 为-1的时候，此节点为根节点,
-        const QString& shape_name,                 // 图形类型
-        const QVector<pm::ParamDecl> & params,    // 所创建图形的参数
-        NodeType node_type,                        // 控制是辅助定位，还是增加、减去。
-        NodeDirection node_dirction,               // 放在局部坐标系的四个方位的哪一个
-        ly::LayerInfo* layer,                      // 图层信息，用于填充
-        bool connect_with_mw = false               // 是否已经和操作界面联动
+        int parent_attach_point_idx,                            // 为-1的时候，此节点为根节点,
+        const QString& shape_name,                              // 图形类型
+        const QVector<pm::ParamDecl> & params,                  // 所创建图形的参数
+        NodeType node_type,                                     // 控制是辅助定位，还是增加、减去。
+        NodeDirection node_dirction,                            // 放在局部坐标系的四个方位的哪一个
+        NodeBooleanSubtractType node_boolean_subtra_type,          // delete类型是怎么样的
+        ly::LayerInfo* layer,                                   // 图层信息，用于填充
+        bool connect_with_mw = false                            // 是否已经和操作界面联动
     );
 public:
     ~AttachTreeNode() override;
@@ -132,8 +133,8 @@ public:
     virtual void update() override;
     virtual void update_trans() override;
 
-    void undo (db::Op *op) override;
-    void redo (db::Op *op) override;
+    // void undo (db::Op *op) override;
+    // void redo (db::Op *op) override;
 
 public:
     sp::ShapeDrawGraphicsItem* shape_item();
@@ -145,6 +146,9 @@ public:
     // set/get current node direction
     void set_node_direction(NodeDirection node_direction);
     NodeDirection node_direction() const;
+    // set/get current node boolean subtract type
+    void set_node_boolean_subtract_type(NodeBooleanSubtractType node_direction);
+    NodeBooleanSubtractType node_boolean_subtract_type() const;
     // set/get current node layer info
     void set_layer_info(ly::LayerInfo* layer_info);
     ly::LayerInfo* layer_info() const;
@@ -155,6 +159,7 @@ public:
     // 图形节点
     sp::ShapeBase* shape(void) const;
     const QString& shape_name() const;
+    void set_shape_name(const QString& new_shape_name);  // HINT@leixunyong。这里不是简单改了名字，会把shape也改了。
 
     // 设置/获取附着点是否是锚点
     void set_anchor_point(int attach_point_idx, bool is_anchor);
@@ -188,6 +193,7 @@ private:
     // node info
     NodeType m_node_type;
     NodeDirection m_node_direction;
+    NodeBooleanSubtractType m_node_bool_subtraction;
     ly::LayerInfo* mp_layer_info;
 
     AttachTreeNodeId m_tree_node_id = INVALID_ATTACH_TREE_NODE_ID;        // id为INVALID_ATTACH_TREE_NODE_ID时为无效id

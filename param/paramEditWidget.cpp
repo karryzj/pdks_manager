@@ -204,14 +204,26 @@ void ParamEditWidget::onCellDoubleClicked(int row, int column)
 
 void ParamEditWidget::on_add_new_expressison(const QString &name, const QString &expr_str, const QString &desc)
 {
-    ParamDecl *param_decl = new ParamDecl(name, expr_str, desc);
-    mp_param_mgr->add_param(param_decl);
+    auto param = mp_param_mgr->find_param(name);
+    if(nullptr == param)
+    {
+        ParamDecl *param_decl = new ParamDecl(name, expr_str, desc);
+        mp_param_mgr->add_param(param_decl);
 
-    int rowCount = mp_table_widget->rowCount();
-    mp_table_widget->insertRow(rowCount);
-    mp_table_widget->setItem(rowCount, 0, new QTableWidgetItem(name));
-    mp_table_widget->setItem(rowCount, 1, new QTableWidgetItem(expr_str));
-    mp_table_widget->setItem(rowCount, 2, new QTableWidgetItem(desc));
+        int rowCount = mp_table_widget->rowCount();
+        mp_table_widget->insertRow(rowCount);
+        mp_table_widget->setItem(rowCount, 0, new QTableWidgetItem(name));
+        mp_table_widget->setItem(rowCount, 1, new QTableWidgetItem(expr_str));
+        mp_table_widget->setItem(rowCount, 2, new QTableWidgetItem(desc));
+    }
+    else
+    {
+        qreal value = Expression(expr_str).to_double(mp_param_mgr);
+        param->set_value(value);
+        param->set_expression(expr_str);
+    }
+
+
 }
 
 ParamEditWidget::~ParamEditWidget()
@@ -221,7 +233,7 @@ ParamEditWidget::~ParamEditWidget()
 
 void ParamEditWidget::update_all_items()
 {
-    mp_table_widget->clear();
+    mp_table_widget->clearContents();
     mp_table_widget->setRowCount(0);
     for (auto i = 0; i < mp_param_mgr->params().size(); i++)
     {

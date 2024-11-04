@@ -7,6 +7,8 @@ DEFINES += MUPARSERLIB_EXPORTS
 
 include($$PWD/../ququan_shapes.pri)
 include($$PWD/../lib.pri)
+include($$PWD/../ququan_layout.pri)
+include($$PWD/../with_all_libs.pri)
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -20,7 +22,9 @@ SOURCES += \
     muParserDLL.cpp \
     muParserError.cpp \
     muParserInt.cpp \
-    muParserTokenReader.cpp
+    muParserTokenReader.cpp \
+    quanSystem.cpp \
+    systemSundialsLink.cpp
 
 HEADERS += \
     muParser.h \
@@ -34,10 +38,14 @@ HEADERS += \
     muParserInt.h \
     muParserTemplateMagic.h \
     muParserToken.h \
-    muParserTokenReader.h
+    muParserTokenReader.h \
+    util.h \
+    systemSundialsLink.h \
+    quanSystem.h
 
 # Default rules for deployment.
 unix {
     target.path = /usr/lib
 }
 !isEmpty(target.path): INSTALLS += target
+

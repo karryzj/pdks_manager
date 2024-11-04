@@ -36,6 +36,7 @@ public:
     PrimitiveWindow *get_primitive_window(QString name = "default");
     void set_primitive_window(const QString name, PrimitiveWindow *pri_wnd);
     void save_primitive(QString name = "default");
+    Primitive *load_python_primitive(QString name = "default");
 
 public:
     static PrimitiveMgr *instance();

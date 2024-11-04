@@ -2,6 +2,8 @@
 #include "shapeDefines.h"
 #include <PointE.h>
 
+#include "paramUtils.h"
+
 namespace pm
 {
 class ParamMgr;
@@ -74,18 +76,18 @@ QPainterPath ShapeRectangle::build_path()
     return path;
 }
 
-ShapeRectangleFacotry::ShapeRectangleFacotry()
+ShapeRectangleFactory::ShapeRectangleFactory()
     : ShapeFactoryBase()
 {
 
 }
 
-ShapeRectangleFacotry::~ShapeRectangleFacotry()
+ShapeRectangleFactory::~ShapeRectangleFactory()
 {
 
 }
 
-ShapeBase *ShapeRectangleFacotry::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
+ShapeBase *ShapeRectangleFactory::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
 {
     return new ShapeRectangle(param_mgr, params, parent_attach_point);
 }

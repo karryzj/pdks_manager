@@ -4,6 +4,7 @@
 // 以下为图形的字符串的宏定义
 #define SHAPE_POINT                                    "point"
 #define SHAPE_CIRCLE                                   "circle"
+#define SHAPE_CURVE                                    "curve"
 #define SHAPE_ELLIPSE                                  "ellipse"
 #define SHAPE_POLYGEN                                  "polygen"
 #define SHAPE_QUADRANGLE                               "quadrangle"
@@ -15,6 +16,12 @@
 #define SHAPE_ROTATE                                   "rotate"
 
 #define SHAPE_CIRCLE_RADIUS                            "radius"
+
+#define SHAPE_CURVE_EQUATION                           "equation"
+#define SHAPE_CURVE_FIXED_POINT_SET                    "fixed point set"
+#define SHAPE_CURVE_REVERSE                            "reverse"
+#define SHAPE_CURVE_REVERSE_TURE                       "true"
+#define SHAPE_CURVE_REVERSE_FALSE                      "false"
 
 #define SHAPE_ELLIPSE_SEMI_MAJOR_AXIS                  "semi major axis"
 #define SHAPE_ELLIPSE_SEMI_MINOR_AXIS                  "semi minor axis"

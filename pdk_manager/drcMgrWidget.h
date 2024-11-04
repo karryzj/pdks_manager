@@ -13,15 +13,21 @@ class DrcMgrWidget : public QWidget
     Q_OBJECT
 public:
     explicit DrcMgrWidget(QWidget *parent = nullptr);
+    void fill_data();
+    void add_drc_list(const QString &drc);
+
+    QStringList drc_list() const;
+    void set_drc_list(const QStringList &drc_list);
 
 private:
-
     void setup_ui();
-    void fill_data();
 
     QListWidget         *mp_list_widget;
     QPushButton         *mp_add_button;
     QStringList         m_drc_list;
+
+private slots:
+    void add_drc_item();
 signals:
 };
 

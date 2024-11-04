@@ -21,8 +21,6 @@ public:
     explicit PriTreeWidget(at::AttachTreeRootNode *node, PrimitiveWindow *parent);
     ~PriTreeWidget();
 
-    void update_tree();
-
     void add_tree_node(const at::AttachTreeBaseNode* node, int point_idx,  QTreeWidgetItem* parentItem);
     void visible_shape_points(const at::AttachTreeNode *node);
     void hide_shape_points(const at::AttachTreeNode *node);
@@ -40,6 +38,7 @@ signals:
 public slots:
     void onSceneSelectionChanged(QGraphicsScene* scene);
     void process_tree_widget_context_menu(const QPoint& global_pos, QGraphicsItem* item);
+    void update_tree();
 private slots:
     void onItemClicked(QTreeWidgetItem* item, int column);
     void onRightButtonClicked(QTreeWidgetItem* item, int column);

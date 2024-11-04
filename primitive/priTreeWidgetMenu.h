@@ -50,6 +50,8 @@ private slots:
     void onCoordActionTriggered();
     void reedit_shape();
     void onRotateActionTriggered();
+    void onMirrorActionTriggered();
+    void onConvertShapeActionTriggered();
     void show_shape_info();
 
 
@@ -59,7 +61,7 @@ signals:
 private:
     PriTreeWidget* mp_pri_tree_widget;
     Primitive* mp_pri;
-    PriTreeWidgetItem* mp_pickup_tree_widget_item = nullptr;   // HINT@leixunyong。缓存被右键的节点
+    QGraphicsItem* mp_pickup_graphics_item = nullptr;   // HINT@leixunyong。缓存被右键的节点
     at::AttachTreeNode* mp_copied_tree_node = nullptr;
     at::AttachTreeNode* mp_cut_tree_node = nullptr;
 };

@@ -444,7 +444,7 @@ namespace mu
 				case cmPOW:
 				case cmASSIGN:
 					// The assignment operator need special treatment
-					if (i == cmASSIGN && m_iSynFlags & noASSIGN)
+					if (prAssign == -1 &&i == cmASSIGN && m_iSynFlags & noASSIGN) //Parser modify
 						Error(ecUNEXPECTED_OPERATOR, m_iPos, pOprtDef[i]);
 
 					if (!m_pParser->HasBuiltInOprt()) continue;

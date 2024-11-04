@@ -13,6 +13,8 @@
 #include "ruler.h"
 #include "viewport.h"
 #include "priUtils.h"
+#include "removeCommand.h"
+#include "commandManager.h"
 
 using namespace pr;
 using namespace sp;
@@ -44,12 +46,14 @@ void pr::PriGraphicsScene::toggle_ruler()
     mp_ruler->setVisible(! mp_ruler->isVisible());
 }
 
+cm::Ruler *pr::PriGraphicsScene::ruler() const
+{
+    return mp_ruler;
+}
+
 // 此接口可后续扩充
 void pr::PriGraphicsScene::keyPressEvent(QKeyEvent *event)
 {
-    // 调用基类的 keyPressEvent 以处理其他键盘事件
-    QGraphicsScene::keyPressEvent(event);
-
     if (event->key() == Qt::Key_Delete)
     {
         // 获取当前选中的项
@@ -67,10 +71,11 @@ void pr::PriGraphicsScene::keyPressEvent(QKeyEvent *event)
 
                 at::AttachTreeNode* tree_node = at::AttachTreeUtils::attach_tree_node_shape_item_in(shape_item, pri_graphics_view->current_primitive()->at_root());
                 emit before_delete_tree_node(tree_node);
+                //cmd::CommandManager::instance()->push(new cmd::RemoveCommand(tree_node));
                 delete tree_node;
                 emit after_delete_tree_node();
-
             }
         }
     }
+    QGraphicsScene::keyPressEvent(event);
 }

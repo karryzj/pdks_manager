@@ -72,7 +72,6 @@ QPainterPath ShapePolygen::build_path()
     }
 
     return path;
-
 }
 
 void ShapePolygen::remove_no_coord_params(QVector<pm::ParamDecl> &params)
@@ -103,17 +102,17 @@ void ShapePolygen::remove_no_coord_params(QVector<pm::ParamDecl> &params)
     }
 }
 
-ShapePolygenFacotry::ShapePolygenFacotry()
+ShapePolygenFactory::ShapePolygenFactory()
 {
 
 }
 
-ShapePolygenFacotry::~ShapePolygenFacotry()
+ShapePolygenFactory::~ShapePolygenFactory()
 {
 
 }
 
-ShapeBase *ShapePolygenFacotry::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
+ShapeBase *ShapePolygenFactory::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
 {
     return new ShapePolygen(param_mgr, params, parent_attach_point);
 }

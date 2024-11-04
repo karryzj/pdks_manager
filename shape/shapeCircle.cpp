@@ -28,12 +28,13 @@ ShapeCircle::~ShapeCircle()
 
 void ShapeCircle::update_attach_pointes()
 {
+    pm::Expression diameter = pm::Expression(m_radius_exp.c_str()) * 2;
     m_attach_points_e =
     {
-        pm::PointE(-pm::Expression(m_radius_exp.c_str()), m_radius_exp),
-        pm::PointE(-pm::Expression(m_radius_exp.c_str()), -pm::Expression(m_radius_exp.c_str())),
-        pm::PointE(m_radius_exp, -pm::Expression(m_radius_exp.c_str())),
-        pm::PointE(m_radius_exp, m_radius_exp),
+        pm::PointE(pm::Expression("0"), diameter),
+        pm::PointE(pm::Expression("0"), pm::Expression("0")),
+        pm::PointE(diameter, pm::Expression("0")),
+        pm::PointE(diameter, diameter),
     };
 }
 
@@ -51,34 +52,30 @@ void ShapeCircle::update_variables()
             m_radius = param.to_float(mp_param_mgr);
             m_radius_exp = param.to_str().toStdString();
         }
-        else
-        {
-            Q_ASSERT(false);
-        }
     }
 }
 
 QPainterPath ShapeCircle::build_path()
 {
     // 定义圆心和半径
-    QPointF center(0, 0);
+    QPointF center(m_radius, m_radius);
     QPainterPath path;
     path.addEllipse(center, m_radius, m_radius);
     return path;
 }
 
-ShapeCircleFacotry::ShapeCircleFacotry()
+ShapeCircleFactory::ShapeCircleFactory()
     : ShapeFactoryBase()
 {
 
 }
 
-ShapeCircleFacotry::~ShapeCircleFacotry()
+ShapeCircleFactory::~ShapeCircleFactory()
 {
 
 }
 
-ShapeBase *ShapeCircleFacotry::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
+ShapeBase *ShapeCircleFactory::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
 {
     return new ShapeCircle(param_mgr, params, parent_attach_point);
 }

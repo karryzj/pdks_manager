@@ -4,6 +4,7 @@
 #include <AttachTreeNode.h>
 #include <AttachTreePrivateUtils.h>
 
+#include "attachTreeNodeMgr.h"
 #include "dbObject.h"
 
 #include "shapeBase.h"
@@ -15,7 +16,7 @@ using namespace at;
 
 AttachTreeBaseNode::AttachTreeBaseNode(QObject* parent)
     : QObject{parent}
-    , db::Object()
+      // , db::Object()
 {
 
 }
@@ -46,6 +47,7 @@ at::AttachTreeNode *at::AttachTreeBaseNode::add_child(
     const QVector<pm::ParamDecl> &params,
     NodeType node_type,
     NodeDirection node_direction,
+    NodeBooleanSubtractType node_boolean_subtract_type,
     ly::LayerInfo *layer)
 {
     // 初始化新节点
@@ -56,6 +58,7 @@ at::AttachTreeNode *at::AttachTreeBaseNode::add_child(
                                 params,
                                 node_type,
                                 node_direction,
+                                node_boolean_subtract_type,
                                 layer);
 
     add_child(child, parent_attach_point_idx);
@@ -96,6 +99,8 @@ void at::AttachTreeBaseNode::set_transform_for_expression(const pm::PointE &tran
 void at::AttachTreeBaseNode::remove_all()
 {
     // 将自己的全部子节点都移除
+    auto origin_status =  tree_node_mgr()->is_disable();
+    tree_node_mgr()->set_disable(true);
     for (auto itor = m_children.begin(); itor != m_children.end(); itor++)
     {
         while(!itor.value().isEmpty())
@@ -106,6 +111,8 @@ void at::AttachTreeBaseNode::remove_all()
         }
     }
     m_children.clear();
+    tree_node_mgr()->set_disable(origin_status);
+    tree_node_mgr()->update();
 }
 
 void at::AttachTreeBaseNode::remove_child(AttachTreeNode* node)
@@ -115,7 +122,11 @@ void at::AttachTreeBaseNode::remove_child(AttachTreeNode* node)
         return;
     }
 
-    m_children[node->get_parent_attach_point_idx()].removeOne(node);
+    bool ret = m_children[node->get_parent_attach_point_idx()].removeOne(node);
+    if (m_children[node->get_parent_attach_point_idx()].size() == 0)
+    {
+        m_children.remove(node->get_parent_attach_point_idx());
+    }
 }
 
 QRectF at::AttachTreeBaseNode::bounding_rect()

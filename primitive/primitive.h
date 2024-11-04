@@ -52,9 +52,8 @@ public:
     QString name() const;
     ly::LayerMgr *layer_mgr() const;
     pm::ParamMgr *param_mgr() const;
-    QVector<at::AttachTreeUtils::AttachPointPosInf> get_json_anchors();
-    void set_json_anchors(const QVector<at::AttachTreeUtils::AttachPointPosInf> &anchors);
-    void set_anchors(const QVector<at::AttachTreeUtils::AttachPointPosInf> &anchors);
+    const QVector<at::AttachTreeUtils::AttachPointPosInf>& get_json_anchors();
+    void set_json_anchors(const QVector<at::AttachTreeUtils::AttachPointPosInf> &anchors);  // 这里是缓存了锚点的记录
 
     at::AttachTreeNodeMgr* tree_node_mgr() const;
     at::AttachTreeRootNode *at_root() const;
@@ -64,6 +63,10 @@ public:
     QString thumbnail() const;
     void reset();
     double dbu();
+    int load_py_json();
+
+    double arc_len() const;
+    void set_arc_len(double arc_len);
 
 private:
     // for load
@@ -76,6 +79,7 @@ private:
     int load_json_file(const QString &filename);
     int load_base_json_file(const QString &filename);
     int load_node_json_file(const QString &filename);
+    int load_python_json_file(const QString &filename);
 
 signals:
     void signal_add_new_tree();
@@ -84,9 +88,10 @@ private:
     QString m_name;
     QString m_thumbnail;
     QString m_json;
+    QString m_py_json;
     QString m_password;
-
-    double m_dbu;
+    double  m_dbu;
+    double  m_arc_len;
 
     ly::LayerMgr *mp_layer_mgr = nullptr;
     pm::ParamMgr *mp_param_mgr = nullptr;

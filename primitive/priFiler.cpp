@@ -1,19 +1,19 @@
 #include "priFiler.h"
 
-
 #include <AttachTreeBaseNode.h>
 #include <AttachTreeNode.h>
 #include <Primitive.h>
 #include <layInfo.h>
 #include "attachTreeNodeMgr.h"
 #include "attachTreeRootNode.h"
+#include "common_Defines.h"
 #include "layerMgr.h"
 #include "paramMgr.h"
 #include "shapeBase.h"
 #include "ParamDecl.h"
 #include "attachTreeUtils.h"
 #include "pointE.h"
-
+#include "configManager.h"
 
 using namespace at;
 
@@ -55,6 +55,10 @@ void PriFiler::save_primitive_to_file(QJsonObject &root_object)
     save_tree_nodes(node_obj);
     primitive_object["node"] = node_obj;
 
+    QJsonObject arc_obj;
+    save_arc_length(arc_obj);
+    primitive_object["arc"] = arc_obj;
+
     root_object["primitive"] = primitive_object;
 }
 
@@ -71,17 +75,20 @@ void PriFiler::load_primitive_from_file(const QJsonObject &root_object)
     QJsonObject node_obj = primitive_object["node"].toObject();
     PriFiler::load_tree_nodes(node_obj);
 
-    QJsonObject coord_anchor_obj = primitive_object["coord_anchor"].toObject();
-    PriFiler::load_coord_anchor(coord_anchor_obj);
-
-    QJsonArray anchors = primitive_object["anchors"].toArray();
-    PriFiler::load_anchors(anchors);
+    QJsonObject arc_obj = primitive_object["arc"].toObject();
+    PriFiler::load_arc_length(arc_obj);
 
     if(!m_has_match)
     {
         match_old_tree_node_to_new_tree_node_id();
         m_has_match = true;
     }
+
+    QJsonObject coord_anchor_obj = primitive_object["coord_anchor"].toObject();
+    PriFiler::load_coord_anchor(coord_anchor_obj);
+
+    QJsonArray anchors = primitive_object["anchors"].toArray();
+    PriFiler::load_anchors(anchors);
 
     mp_pri->tree_node_mgr()->update();
 
@@ -109,17 +116,20 @@ void PriFiler::load_node_from_file(const QJsonObject &root_object)
     QJsonObject node_obj = primitive_object["node"].toObject();
     PriFiler::load_tree_nodes(node_obj);
 
-    QJsonObject coord_anchor_obj = primitive_object["coord_anchor"].toObject();
-    PriFiler::load_coord_anchor(coord_anchor_obj);
-
-    QJsonArray anchors = primitive_object["anchors"].toArray();
-    PriFiler::load_anchors(anchors);
+    QJsonObject arc_obj = primitive_object["arc"].toObject();
+    PriFiler::load_arc_length(arc_obj);
 
     if(!m_has_match)
     {
         match_old_tree_node_to_new_tree_node_id();
         m_has_match = true;
     }
+
+    QJsonObject coord_anchor_obj = primitive_object["coord_anchor"].toObject();
+    PriFiler::load_coord_anchor(coord_anchor_obj);
+
+    QJsonArray anchors = primitive_object["anchors"].toArray();
+    PriFiler::load_anchors(anchors);
 
     init_pri_config();
 
@@ -139,17 +149,19 @@ void PriFiler::load_primitive_from_file(const QJsonObject &root_object, sp::Shap
     QJsonObject node_obj = primitive_object["node"].toObject();
     PriFiler::load_tree_nodes(node_obj, point_item);
 
+    if(!m_has_match)
+    {
+        match_old_tree_node_to_new_tree_node_id();
+        m_has_match = true;
+    }
+
     QJsonObject coord_anchor_obj = primitive_object["coord_anchor"].toObject();
     PriFiler::load_coord_anchor(coord_anchor_obj);
 
     QJsonArray anchors = primitive_object["anchors"].toArray();
     PriFiler::load_anchors(anchors);
 
-    if(!m_has_match)
-    {
-        match_old_tree_node_to_new_tree_node_id();
-        m_has_match = true;
-    }
+    mp_pri->at_root()->update();
 
     mp_pri->tree_node_mgr()->update();
 
@@ -210,9 +222,7 @@ int PriFiler::load_coord_anchor_base(const QJsonObject &coord_anchor_obj)
 
 int PriFiler::save_anchors(QJsonArray &anchors_array)
 {
-    QVector<at::AttachTreeUtils::AttachPointPosInf> anchors;
-    at::AttachTreeUtils::get_anchors_inf(mp_pri->at_root(), anchors);
-    mp_pri->set_json_anchors(anchors);
+    auto anchors = mp_pri->get_json_anchors();
     for (int i = 0; i < anchors.size(); ++i)
     {
         QJsonObject anchor_obj;
@@ -220,6 +230,7 @@ int PriFiler::save_anchors(QJsonArray &anchors_array)
         anchor_obj["y"] = anchors[i].pos.y().to_str();
         anchor_obj["node_id"] = anchors[i].id;
         anchor_obj["attach_point_idx"] = anchors[i].attach_point_idx;
+        anchor_obj["rotate_angle"] = anchors[i].rotate_angle;
         anchors_array.append(anchor_obj);
     }
     return 0;
@@ -241,9 +252,10 @@ int PriFiler::load_anchors(const QJsonArray &anchors_array)
         }
         anchor.id = tree_node->id();
         anchor.attach_point_idx = anchor_obj["attach_point_idx"].toInt();
+        anchor.rotate_angle = anchor_obj["rotate_angle"].toString();
         anchors.append(anchor);
     }
-    at::AttachTreeUtils::set_anchors_inf(mp_pri->at_root(), anchors);
+    mp_pri->set_json_anchors(anchors);
     return 0;
 }
 
@@ -259,6 +271,7 @@ int PriFiler::load_anchors_base(const QJsonArray &anchors_array)
         // 此时treeNode还未建立，id设置为0
         anchor.id = 0;
         anchor.attach_point_idx = anchor_obj["attach_point_idx"].toInt();
+        anchor.rotate_angle = anchor_obj["rotate_angle"].toString();
         anchors.append(anchor);
     }
     mp_pri->set_json_anchors(anchors);
@@ -282,10 +295,11 @@ int PriFiler::load_node_anchors(const QJsonArray &anchors_array)
 
         anchor.id = tree_node->id();
         anchor.attach_point_idx = anchor_obj["attach_point_idx"].toInt();
+        anchor.rotate_angle = anchor_obj["rotate_angle"].toString();
         anchors.append(anchor);
     }
 
-    at::AttachTreeUtils::set_anchors_inf(mp_pri->at_root(), anchors);
+    mp_pri->set_json_anchors(anchors);
     return 0;
 }
 
@@ -567,7 +581,7 @@ int PriFiler::save_tree_child_node(at::AttachTreeNode * tree_node, QJsonObject &
     return_value = save_tree_child_node_layer_info(tree_node->layer_info(), child_node_obj);
     Q_ASSERT(0 == return_value);
 
-    return_value = save_tree_child_node_type_and_direction_info(tree_node->node_type(), tree_node->node_direction(), child_node_obj);
+    return_value = save_tree_child_node_type_and_direction_and_boolean_subtract_type_info(tree_node->node_type(), tree_node->node_direction(), tree_node->node_boolean_subtract_type(), child_node_obj);
     Q_ASSERT(0 == return_value);
 
     return_value = save_tree_child_node_params(tree_node->shape()->params(), child_node_obj);
@@ -615,7 +629,8 @@ int PriFiler::load_root_child_node(at::AttachTreeRootNode * root_node, const QJs
 
     at::NodeType node_type = at::NodeType::NONE;
     at::NodeDirection node_direction = at::NodeDirection::NONE;
-    return_value = load_tree_child_node_type_and_direction_info(node_type, node_direction, child_node_obj);
+    at::NodeBooleanSubtractType node_boolean_subtract_type = at::NodeBooleanSubtractType::NONE;
+    return_value = load_tree_child_node_type_and_direction_and_boolean_subtract_type_info(node_type, node_direction, node_boolean_subtract_type, child_node_obj);
     Q_ASSERT(0 == return_value);
 
     QVector<pm::ParamDecl> params;
@@ -624,7 +639,7 @@ int PriFiler::load_root_child_node(at::AttachTreeRootNode * root_node, const QJs
 
     at::AttachTreeNode * tree_node;
     root_node->set_update_children(false);
-    tree_node =  root_node->add_child(parent_attach_point_idx, shape_name, params, node_type, node_direction, layer_info);
+    tree_node =  root_node->add_child(parent_attach_point_idx, shape_name, params, node_type, node_direction, node_boolean_subtract_type, layer_info);
     root_node->set_update_children(true);
     m_old_tree_node_id_to_new_tree_node[id] = tree_node;
     QJsonArray sub_children = child_node_obj["children"].toArray();
@@ -668,7 +683,8 @@ int PriFiler::load_tree_child_node(at::AttachTreeBaseNode * root_node, const QJs
 
     at::NodeType node_type = at::NodeType::NONE;
     at::NodeDirection node_direction = at::NodeDirection::NONE;
-    return_value = load_tree_child_node_type_and_direction_info(node_type, node_direction, child_node_obj);
+    at::NodeBooleanSubtractType node_boolean_subtract_type = at::NodeBooleanSubtractType::NONE;
+    return_value = load_tree_child_node_type_and_direction_and_boolean_subtract_type_info(node_type, node_direction, node_boolean_subtract_type, child_node_obj);
     Q_ASSERT(0 == return_value);
 
     QVector<pm::ParamDecl> params;
@@ -676,7 +692,7 @@ int PriFiler::load_tree_child_node(at::AttachTreeBaseNode * root_node, const QJs
     Q_ASSERT(0 == return_value);
 
     at::AttachTreeNode * tree_node;
-    tree_node =  root_node->add_child(parent_attach_point_idx, shape_name, params, node_type, node_direction, layer_info);
+    tree_node =  root_node->add_child(parent_attach_point_idx, shape_name, params, node_type, node_direction, node_boolean_subtract_type, layer_info);
 
     QVector<QPointF> attach_points;
     return_value = load_tree_child_node_attach_points_info(tree_node, child_node_obj);
@@ -716,7 +732,8 @@ int PriFiler::load_tree_child_node(at::AttachTreeNode * root_node, const QJsonOb
 
     at::NodeType node_type = at::NodeType::NONE;
     at::NodeDirection node_direction = at::NodeDirection::NONE;
-    return_value = load_tree_child_node_type_and_direction_info(node_type, node_direction, child_node_obj);
+    at::NodeBooleanSubtractType node_boolean_subtract_type = at::NodeBooleanSubtractType::NONE;
+    return_value = load_tree_child_node_type_and_direction_and_boolean_subtract_type_info(node_type, node_direction, node_boolean_subtract_type, child_node_obj);
     Q_ASSERT(0 == return_value);
 
     QVector<pm::ParamDecl> params;
@@ -725,7 +742,7 @@ int PriFiler::load_tree_child_node(at::AttachTreeNode * root_node, const QJsonOb
 
     at::AttachTreeNode * tree_node;
     root_node->set_update_children(false);
-    tree_node =  root_node->add_child(parent_attach_point_idx, shape_name, params, node_type, node_direction, layer_info);
+    tree_node =  root_node->add_child(parent_attach_point_idx, shape_name, params, node_type, node_direction, node_boolean_subtract_type, layer_info);
     root_node->set_update_children(true);
     // HINT@leixunyong。在节点生成后才能生成附着点。
     return_value = load_tree_child_node_attach_points_info(tree_node, child_node_obj);
@@ -776,7 +793,7 @@ int PriFiler::save_tree_child_node_attach_points_info(at::AttachTreeNode *node, 
 
     for(int idx = 0; idx < node->shape()->attach_points().size(); idx++)
     {
-        auto point = at::AttachTreeUtils::attach_exp_point(node, idx, false);  // HINT@leixunyong。这里的附着点的表达式需要保存吗？
+        auto point = at::AttachTreeUtils::attach_exp_point_coord(node, idx, false);  // HINT@leixunyong。这里的附着点的表达式需要保存吗？
         int id = idx;
         bool is_anchor = node->is_anchor_point(idx);
         bool is_coord_anchor = node->is_coord_point(idx);
@@ -804,7 +821,7 @@ int PriFiler::load_tree_child_node_attach_points_info(at::AttachTreeNode *node, 
 
     Q_ASSERT(attach_points_array.size() == point_items.size());
 
-    for(int idx = 0; attach_points_array.size(); idx++)
+    for(int idx = 0; idx < attach_points_array.size(); idx++)
     {
         QJsonObject attach_point_obj = attach_points_array.at(idx).toObject();
 
@@ -816,8 +833,8 @@ int PriFiler::load_tree_child_node_attach_points_info(at::AttachTreeNode *node, 
 
         point_items[id]->set_anchor_point(is_anchor);
         point_items[id]->set_coor_anchor_point(is_coord_anchor);
-        return 0;
     }
+    return 0;
 }
 int PriFiler::save_tree_child_node_shape_name_info(const QString& shape_name, QJsonObject &child_node)
 {
@@ -845,17 +862,19 @@ int PriFiler::load_tree_child_node_layer_info(ly::LayerInfo*& layer_info, const 
     return 0;
 }
 
-int PriFiler::save_tree_child_node_type_and_direction_info(at::NodeType node_type, at::NodeDirection node_direction, QJsonObject &child_node)
+int PriFiler::save_tree_child_node_type_and_direction_and_boolean_subtract_type_info(at::NodeType node_type, at::NodeDirection node_direction, at::NodeBooleanSubtractType node_boolean_subtract_type, QJsonObject &child_node)
 {
     child_node["node_type"] = static_cast<int>(node_type);
     child_node["node_direction"] = static_cast<int>(node_direction);
+    child_node["node_boolean_subtract_type"] = static_cast<int>(node_boolean_subtract_type);
     return 0;
 }
 
-int PriFiler::load_tree_child_node_type_and_direction_info(at::NodeType& node_type, at::NodeDirection& node_direction, const QJsonObject &child_node)
+int PriFiler::load_tree_child_node_type_and_direction_and_boolean_subtract_type_info(at::NodeType& node_type, at::NodeDirection& node_direction, at::NodeBooleanSubtractType& node_boolean_subtract_type,  const QJsonObject &child_node)
 {
     node_type  = static_cast<at::NodeType>(child_node["node_type"].toInt());
     node_direction = static_cast<at::NodeDirection>(child_node["node_direction"].toInt());
+    node_boolean_subtract_type = static_cast<at::NodeBooleanSubtractType>(child_node["node_boolean_subtract_type"].toInt());
     return 0;
 }
 
@@ -959,6 +978,69 @@ void PriFiler::match_old_tree_node_to_new_tree_node_id()
 void PriFiler::init_pri_config() const
 {
     sp::ShapePointGraphicsItem::cachedItem = mp_pri->at_root()->origin_point();
+}
+
+int PriFiler::load_py_layers(const QJsonArray &layers)
+{
+    for (int i = 0; i < layers.size(); ++i)
+    {
+        auto layer_name = layers[i].toString();
+        // auto layer_name = layer_object.toString();
+        // 这里需要额外进行查重判断。如果已经有同名的图层就不进行加载。
+        if(mp_pri->layer_mgr()->get_layer_info_by_name(layer_name))
+        {
+            continue;
+        }
+
+        ly::LayerInfo *layer_info = new ly::LayerInfo();
+        layer_info->set_layer_name(layer_name);
+        layer_info->set_border_line(ly::LayerInfo::Border_Style::SolidLine);
+        layer_info->set_border_color(ly::LayerInfo::Layer_Color::Color1);
+        layer_info->set_fill_line(ly::LayerInfo::Fill_Style::NotFill);
+        layer_info->set_fill_color(ly::LayerInfo::Layer_Color::Color1);
+        mp_pri->layer_mgr()->set_layers(layer_info);
+    }
+    return 0;
+}
+
+int PriFiler::load_py_anchors(const QJsonArray &anchors_array)
+{
+    QVector<at::AttachTreeUtils::AttachPointPosInf> anchors;
+    for (int i = 0; i < anchors_array.size(); ++i)
+    {
+        at::AttachTreeUtils::AttachPointPosInf anchor;
+        QJsonObject anchor_obj = anchors_array[i].toObject();
+        anchor.pos = pm::PointE(anchor_obj["x"].toString(), anchor_obj["y"].toString());
+        anchor.id = 0;
+        anchor.attach_point_idx = 0;
+        anchors.append(anchor);
+    }
+    mp_pri->set_json_anchors(anchors);
+    return 0;
+}
+
+void PriFiler::save_arc_length(QJsonObject &arc_obj)
+{
+    auto arc_len = cm::ConfigManager::instance()->query(CM_ARC_LEN_KEY).toDouble();
+    arc_obj["length"] = arc_len;
+}
+
+void PriFiler::load_arc_length(const QJsonObject &arc_obj)
+{
+    auto arc_len = arc_obj["length"].toDouble();
+    cm::ConfigManager::instance()->setup_value(CM_ARC_LEN_KEY, arc_len);
+}
+
+void PriFiler::load_py_info_from_file(const QJsonObject &root_object)
+{
+    QJsonArray layers = root_object["layers"].toArray();
+    PriFiler::load_py_layers(layers);
+
+    QJsonObject param_manager = root_object["param_rules"].toObject();
+    PriFiler::load_param_rules(param_manager);
+
+    QJsonArray anchors = root_object["anchors"].toArray();
+    PriFiler::load_py_anchors(anchors);
 }
 
 }

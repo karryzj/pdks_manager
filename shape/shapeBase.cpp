@@ -1,7 +1,9 @@
 
 #include "shapeBase.h"
+#include "common_defines.h"
 #include "paramMgr.h"
 #include "qdebug.h"
+#include "qgraphicsscene.h"
 #include "scopeTimer.h"
 #include "shapeDefines.h"
 #include "QPainterPath"
@@ -80,8 +82,40 @@ QString ShapeBase::shape_name() const
 
 const QVector<ShapePointGraphicsItem *>& ShapeBase::point_graphics_items() const
 {
-    Q_ASSERT(!m_point_items.isEmpty());
     return m_point_items;
+}
+
+void ShapeBase::set_point_graphics_items(const QVector<ShapePointGraphicsItem *> &point_items)
+{
+    for(auto point_item : m_point_items)
+    {
+        SAFE_DELETE(point_item);
+    }
+    m_point_items.clear();
+
+    m_point_items = point_items;
+}
+
+void ShapeBase::remove_point_graphics_items()
+{
+    m_point_items.clear();
+}
+
+void ShapeBase::set_shape_graphics_item(ShapeDrawGraphicsItem *shape_item)
+{
+    if(mp_shape_item && mp_shape_item->scene())
+    {
+        mp_shape_item->scene()->removeItem(mp_shape_item);
+    }
+
+    SAFE_DELETE(mp_shape_item);
+
+    mp_shape_item = shape_item;
+}
+
+void ShapeBase::remove_shape_item()
+{
+    mp_shape_item = nullptr;
 }
 
 void ShapeBase::set_anchor_points(const QVector<QPointF>& points)
@@ -193,4 +227,16 @@ ShapeDrawGraphicsItem *ShapeBase::shape_graphics_item() const
     return mp_shape_item;
 }
 
+void ShapeBase::replace_graphics_items(ShapeBase *other_shape)
+{
+    auto old_shape_item = other_shape->shape_graphics_item();
+    this->set_shape_graphics_item(old_shape_item);
+    other_shape->remove_shape_item();
+
+    const auto& old_shape_point_items = other_shape->point_graphics_items();
+    this->set_point_graphics_items(old_shape_point_items);
+    other_shape->remove_point_graphics_items();
+
+    old_shape_item->set_shape_info(this);
+}
 }

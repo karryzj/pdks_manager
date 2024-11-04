@@ -47,7 +47,7 @@ public:
     const QString &desc() const;
     double value() const;
     // type conversion
-    float to_float(ParamMgr *mgr);    
+    float to_float(ParamMgr *mgr);
     double to_double(ParamMgr *mgr) const;
     int to_int(ParamMgr *mgr);
     QString to_str() const;
@@ -64,8 +64,14 @@ public:
     void set_expression(const QString &expression);
 
     // gsi use
-    double to_double() const{return m_value;};
-    int to_int() const{return int(m_value);};
+    double to_double() const
+    {
+        return m_value;
+    };
+    int to_int() const
+    {
+        return int(m_value);
+    };
 
 private:
     QString m_key = "";

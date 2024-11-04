@@ -19,16 +19,20 @@
 #include "layerDefines.h"
 #include "attachTreeUtils.h"
 #include "pointE.h"
+#include "priPythonWindow.h"
+#include "layoutView.h"
 
 namespace pr
 {
 PrimitiveMgrWindow::PrimitiveMgrWindow(QWidget *parent)
     : QMainWindow{parent}, mp_pri_tree_widget(new QTreeWidget()), mp_label(new QLabel()), mp_layer_list(new QListWidget()),
-      mp_params_table(new QTableWidget(0, 3)), mp_rules_table(new QTableWidget(0, 1)), mp_anchor_table(new QTableWidget(0, 2)),
+      mp_params_table(new QTableWidget(0, 3)), mp_rules_table(new QTableWidget(0, 1)), mp_anchor_table(new QTableWidget(0, 3)),
       mp_current_pimitive(nullptr)
 {
     setup_ui();
     load_dir_files();
+
+    //qq::LayoutView::init({"Python"}, false);
 }
 
 void PrimitiveMgrWindow::setup_ui()
@@ -126,7 +130,7 @@ void PrimitiveMgrWindow::setup_ui()
     addDockWidget(Qt::RightDockWidgetArea, rules_dock);
 
     // 显示锚点
-    mp_anchor_table->setHorizontalHeaderLabels({tr("X轴坐标"), tr("Y轴坐标")});
+    mp_anchor_table->setHorizontalHeaderLabels({tr("X轴坐标"), tr("Y轴坐标"), tr("旋转角度")});
     mp_anchor_table->setSelectionBehavior(QAbstractItemView::SelectRows);
     mp_anchor_table->setSelectionMode(QAbstractItemView::SingleSelection);
     mp_anchor_table->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -215,14 +219,17 @@ void PrimitiveMgrWindow::edit_primitive()
         }
         else
         {
+            QString json_file_name = "data.json";
+            QString py_file_name = "data.py";
+
             QString current_path_str = QDir::currentPath() + "/data/primitives/";
-            QString file_name = "data.json";
             QString path = parent->text(0);
             QString sub_path = selectedItem->text(0);
             QString full_path = current_path_str + path + "/" + sub_path;
             QDir sub_dir(full_path);
             QStringList entries = sub_dir.entryList(QDir::NoDotAndDotDot | QDir::AllEntries);
-            if (entries.isEmpty() || sub_dir.exists(file_name))
+            //json
+            if (entries.isEmpty() || sub_dir.exists(json_file_name))
             {
                 bool new_create = true;
                 if (mp_current_pimitive)
@@ -239,9 +246,12 @@ void PrimitiveMgrWindow::edit_primitive()
                 // popupWindow->fill_tree_node();
                 popupWindow->show();
             }
-            else
+            //py
+            else if(sub_dir.exists(py_file_name))
             {
-
+                QString py_file_path = full_path + "/" + py_file_name;
+                PriPythonWindow *py_window = new PriPythonWindow(this, py_file_path);
+                py_window->show();
             }
         }
     }
@@ -276,7 +286,7 @@ void PrimitiveMgrWindow::add_tuyuan(QTreeWidgetItem *item)
         if (tuyuan_type)
         {
             // 在目录中创建空文件
-            QString fileName = "python";
+            QString fileName = "data.py";
             QString filePath = current_path_str + "/" + new_dir_name + "/" + fileName;
             QFile file(filePath);
             if (file.open(QIODevice::WriteOnly))
@@ -435,6 +445,7 @@ void PrimitiveMgrWindow::fill_anchors(QVector<at::AttachTreeUtils::AttachPointPo
         mp_anchor_table->insertRow(i);
         mp_anchor_table->setItem(i, 0, new QTableWidgetItem(anchors[i].pos.x().to_str()));
         mp_anchor_table->setItem(i, 1, new QTableWidgetItem(anchors[i].pos.y().to_str()));
+        mp_anchor_table->setItem(i, 2, new QTableWidgetItem(anchors[i].rotate_angle));
     }
 }
 
@@ -502,6 +513,7 @@ void PrimitiveMgrWindow::load_primitive(QTreeWidgetItem *item, int column)
 {
     QString current_path_str = QDir::currentPath() + "/data/primitives/";
     QString file_name = "data.json";
+    QString py_json_name = "info.json";
     clear_data();
     if (item->childCount() == 0)
     {
@@ -530,6 +542,17 @@ void PrimitiveMgrWindow::load_primitive(QTreeWidgetItem *item, int column)
                 fill_data(mp_current_pimitive);
             }
         }
+        else if (full_dir.exists(py_json_name))
+        {
+            mp_current_pimitive = PrimitiveMgr::instance()->load_python_primitive(path);
+            if (mp_current_pimitive)
+            {
+                fill_data(mp_current_pimitive);
+            }
+        }
+
+        //for py
+        fill_thumbnail(full_path + "/thumbnail.png");
     }
 }
 

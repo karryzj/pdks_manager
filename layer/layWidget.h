@@ -26,6 +26,7 @@ public:
     void update_all_items();
 signals:
     void layer_changed();
+    void delete_layer_info(LayerInfo* layer);
 
 private:
     void updateButtonState();

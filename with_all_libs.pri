@@ -1,8 +1,10 @@
 
-INCLUDEPATH += $$RBA_INC $$PYA_INC $$TL_INC $$GSI_INC $$DB_INC $$RDB_INC $$LYM_INC $$LAYBASIC_INC $$LAYVIEW_INC $$ANT_INC $$IMG_INC $$EDT_INC $$LIB_INC $$VERSION_INC $$FACADE_INC $$LAY_BUILD_INC $$FACADE_BUILD_INC $$ICONS_INC $$CALC_INC
-DEPENDPATH += $$RBA_INC $$PYA_INC $$TL_INC $$GSI_INC $$DB_INC $$RDB_INC $$LYM_INC $$LAYBASIC_INC $$LAYVIEW_INC $$ANT_INC $$IMG_INC $$EDT_INC $$LIB_INC $$VERSION_INC $$FACADE_INC $$LAY_BUILD_INC $$FACADE_BUILD_INC $$ICONS_INC $$CALC_INC
+INCLUDEPATH += $$RBA_INC $$PYA_INC $$TL_INC $$GSI_INC $$DB_INC $$RDB_INC $$LYM_INC $$LAYBASIC_INC $$LAYVIEW_INC $$ANT_INC $$IMG_INC $$EDT_INC $$LIB_INC $$VERSION_INC $$FACADE_INC $$LAY_BUILD_INC $$FACADE_BUILD_INC $$ICONS_INC $$CALC_INC $$CALC_SUNDIALS_INC
+DEPENDPATH += $$RBA_INC $$PYA_INC $$TL_INC $$GSI_INC $$DB_INC $$RDB_INC $$LYM_INC $$LAYBASIC_INC $$LAYVIEW_INC $$ANT_INC $$IMG_INC $$EDT_INC $$LIB_INC $$VERSION_INC $$FACADE_INC $$LAY_BUILD_INC $$FACADE_BUILD_INC $$ICONS_INC $$CALC_INC $$CALC_SUNDIALS_INC
 
-LIBS += "$$PYTHONLIBFILE" "$$RUBYLIBFILE" -L$$QUQUAN_LAYOUT_LIB_DIR -lklayout_tl -lklayout_gsi -lklayout_db -lklayout_rdb -lklayout_lym -lklayout_laybasic -lklayout_layview -lklayout_ant -lklayout_img -lklayout_edt -lklayout_lib -lququan_layout_facade -lklayout_icons -lcalc
+LIBS += "$$PYTHONLIBFILE" "$$RUBYLIBFILE" -L$$QUQUAN_LAYOUT_LIB_DIR -L$$CALC_LIB_DIR -lklayout_tl -lklayout_gsi -lklayout_db -lklayout_rdb -lklayout_lym -lklayout_laybasic -lklayout_layview -lklayout_ant -lklayout_img -lklayout_edt -lklayout_lib -lququan_layout_facade -lklayout_icons -lcalc
+
+LIBS += -L$$CALC_LIB_DIR -lsundials_nvecserial -lsundials_kinsol -lsundials_core -lsundials_sunlinsoldense -lsundials_sunmatrixdense
 
 !equals(HAVE_QT, "0") {
 

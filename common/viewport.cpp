@@ -1,3 +1,4 @@
+#include <ConfigManager.h>
 #include <cmath>
 
 #include "viewport.h"
@@ -12,7 +13,7 @@ Viewport::Viewport(int w, int h, QRectF box)
     , m_h(h)
     , m_target_box(box)
     , m_trans(QTransform())
-    , m_default_zoom_step(0.25)
+    , m_default_zoom_step(0.2)
 {
     set_box(m_target_box);
 }

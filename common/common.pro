@@ -11,27 +11,30 @@ include($$PWD/../with_all_libs.pri)
 
 HEADERS += \
     AES.h \
+    PythonMethod.h \
     common.h \
+    commonForceLink.h \
     common_defines.h \
+    configManager.h \
     crashDump.h \
     crypto.h \
     numUtils.h \
-    redoService.h \
     ruler.h \
     scopeTimer.h \
-    service.h \
     stringable.h \
     viewport.h
 
 SOURCES += \
     AES.cpp \
+    PythonMethod.cpp \
+    commonForceLink.cpp \
+    configManager.cpp \
     crashDump.cpp \
     crypto.cpp \
+    gsiPythonMethod.cpp \
     numUtils.cpp \
-    redoService.cpp \
     ruler.cpp \
     scopeTimer.cpp \
-    service.cpp \
     stringable.cpp \
     viewport.cpp
 

@@ -7,19 +7,26 @@
 
 namespace pdk
 {
+class PdkInstance;
+
 class TechRuleWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit TechRuleWidget(QWidget *parent = nullptr);
+    explicit TechRuleWidget(PdkInstance *pdk_instance, QWidget *parent = nullptr);
+    void fill_data();
+    void clear_view();
 
 private:
     void setup_ui();
-    void fill_data();
 
+    PdkInstance         *mp_pdk_instance;
     QListWidget         *mp_list_widget;
     QPushButton         *mp_add_button;
     QStringList         m_rule_list;
+
+private slots:
+    void add_rule_item();
 signals:
 };
 

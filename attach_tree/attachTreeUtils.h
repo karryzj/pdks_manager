@@ -6,6 +6,11 @@
 #include "atCommon.h"
 #include "attachTreeDefines.h"
 
+namespace ly
+{
+class LayerMgr;
+}
+
 namespace sp
 {
 class ShapePointGraphicsItem;
@@ -25,6 +30,7 @@ public:
         AttachTreeNodeId id;
         int attach_point_idx;
         pm::PointE pos;
+        QString rotate_angle;
     };
     AttachTreeUtils() = delete;
     // HINT@leixunyong。此接口性能比较差，不建议频繁使用。后续性能优化。
@@ -47,8 +53,10 @@ public:
     static QPointF parent_attach_point_global_pos(AttachTreeNode* tree_node);
     // static pm::PointE parent_attach_exp_point(AttachTreeNode* tree_node,  bool global);  HINT@leixunyong。此接口暂时不需要实现。
 
-    static QPointF attach_point(AttachTreeNode* tree_node, int attach_point_idx, bool global);
-    static pm::PointE attach_exp_point(AttachTreeNode* tree_node, int attach_point_idx, bool global);
+    static QPointF attach_point_coord(AttachTreeNode* tree_node, int attach_point_idx, bool global);
+    static pm::PointE attach_exp_point_coord(AttachTreeNode* tree_node, int attach_point_idx, bool global);
+    static QString attach_exp_point_rotate_angle(AttachTreeNode* tree_node, int attach_point_idx);
+    static QPointF point_coord(AttachTreeNode* tree_node, const QPointF& point, bool global);
 
     //distance of 2 points
     static double distance(AttachTreeNode* tree_node1, int at_point_idx1, AttachTreeNode* tree_node2 = nullptr, int at_point_idx2 = 0);
@@ -81,14 +89,19 @@ public:
     // 设置坐标点信息
     static void set_coordinate_inf(at::AttachTreeRootNode* current_root_node, const AttachPointPosInf& point_inf);
 
-    // 获取锚点信息，包括id，idx和位置
-    static void get_anchors_inf(at::AttachTreeRootNode* current_root_node, QVector<AttachPointPosInf>& points_in);
-
     // 设置锚点信息
-    static void set_anchors_inf(at::AttachTreeRootNode* current_root_node, const QVector<AttachPointPosInf>& points_inf);
+    //static void set_anchors_inf(at::AttachTreeRootNode* current_root_node, const QVector<AttachPointPosInf>& points_inf);
 
     // 更新每个node的数据
     static void update_all_nodes_data(at::AttachTreeRootNode* current_root_node);
+
+    // 创建一个标准的内切圆角。这个圆角是由一个左下的delete矩形，delete矩形左下的矩形，左下矩形的右上add类型扇形组成的。最后返回的是delete矩形。
+    static AttachTreeNode* create_inner_rounded_corner(sp::ShapePointGraphicsItem* point_item, AttachTreeRootNode* root_node, ly::LayerMgr* ly_mgr);
+
+    // 创建一个标准的外切圆角。这个圆角是由一个左上的add矩形，delete矩形左上的矩形，左下矩形的右上扇形组成的。最后返回的是delete矩形。
+    static AttachTreeNode* create_outer_rounded_corner(sp::ShapePointGraphicsItem* point_item, AttachTreeRootNode* root_node, ly::LayerMgr* ly_mgr);
+
+    static void rotate_rounded_corner(AttachTreeNode* parent_node, int point_item_idx_in_parent, AttachTreeNode* rounded_node);
 
 private:
     // 用于保存主窗口创建时的scene的指针信息
@@ -100,13 +113,8 @@ private:
                                 int attach_point_idx);
 
     // 递归的方式找到并设置锚点，set_anchors_inf中调用
-    static void find_anchor(AttachTreeBaseNode* attach_tree_node,
-                            AttachTreeNodeId id,
-                            int attach_point_idx);
-
-    // 递归的方式获取锚点
-    static void get_anchors(AttachTreeBaseNode*   attach_tree_node,
-                            QVector<AttachPointPosInf>& points_inf);
+    // static void set_tree_node_anchor_point(AttachTreeBaseNode* attach_tree_node,
+    //                                        const AttachPointPosInf& point_info);
 };
 }
 #endif // ATTACHTREEUTILS_H

@@ -20,6 +20,7 @@
 #include "attachTreeDefines.h"
 #include "qjsonobject.h"
 #include <QJsonArray.h>
+#include "priCommon.h"
 namespace  at
 {
 class AttachTreeNode;
@@ -47,7 +48,7 @@ namespace pr
 // 此类专门用于图元的保存和加载
 // 如果由此类导致保存加载问题请联系@leixunyong。
 class Primitive;
-class PriFiler final
+class PRI_PUBLIC PriFiler final
 {
 public:
     PriFiler(Primitive* pri);
@@ -60,6 +61,8 @@ public:
     void load_node_from_file(const QJsonObject &root_object);
     // 将对象加载到一个已有的图元的某个附着点下。
     void load_primitive_from_file(const QJsonObject& root_object, sp::ShapePointGraphicsItem* point_item);
+
+    void load_py_info_from_file(const QJsonObject &root_object);
 private:
     int save_coord_anchor(QJsonObject &coord_anchor_obj);
     int load_coord_anchor(const QJsonObject &coord_anchor_obj);
@@ -82,6 +85,12 @@ private:
     int save_tree_nodes( QJsonObject &node_obj);
     int load_tree_nodes(const QJsonObject &node_obj);
     int load_tree_nodes(const QJsonObject &node_obj, sp::ShapePointGraphicsItem* point_item);
+
+    int load_py_layers(const QJsonArray &layers);
+    int load_py_anchors(const QJsonArray &anchors_array);
+
+    void save_arc_length(QJsonObject &arc_len);
+    void load_arc_length(const QJsonObject &arc_len);
 
 private:
     int save_tree_root_node( QJsonObject &root_node_obj);
@@ -131,10 +140,11 @@ private:
     int save_tree_child_node_layer_info(const ly::LayerInfo* layer_info, QJsonObject &child_node);
     int load_tree_child_node_layer_info(ly::LayerInfo*& layer_info, const QJsonObject &child_node);
 
-    int save_tree_child_node_type_and_direction_info(at::NodeType node_type, at::NodeDirection node_direction, QJsonObject &child_node);
-    int load_tree_child_node_type_and_direction_info(at::NodeType& node_type, at::NodeDirection& node_direction, const QJsonObject &child_node);
+    int save_tree_child_node_type_and_direction_and_boolean_subtract_type_info(at::NodeType node_type, at::NodeDirection node_direction,  at::NodeBooleanSubtractType node_boolean_subtract_type, QJsonObject &child_node);
+    int load_tree_child_node_type_and_direction_and_boolean_subtract_type_info(at::NodeType& node_type, at::NodeDirection& node_direction, at::NodeBooleanSubtractType& node_boolean_subtract_type,  const QJsonObject &child_node);
 
     int save_tree_child_node_params(const QVector<pm::ParamDecl>& params, QJsonObject &child_node);
+public://下面这个函数暴漏给c++ pcell调用
     int load_tree_child_node_params(QVector<pm::ParamDecl>& params, const QJsonObject &child_node);
 
 private:

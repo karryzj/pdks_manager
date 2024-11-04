@@ -41,7 +41,8 @@ void Ruler::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWi
 
 void Ruler::paint_grid(QPainter *painter)
 {
-    double grid = m_width / 2;
+    //double grid = m_width / 2;
+    double grid = m_width;
 
     QPointF org_point_view = mp_viewport->map_to_scene(QPointF(0,0));
     QPen pen = QPen(QColor("#cbcccc"), 0.5, Qt::DotLine);
@@ -83,11 +84,12 @@ void Ruler::paint_ruler(QPainter *painter)
 
     //rect
     painter->setPen(pen);
+    painter->setBrush(brush);
     painter->drawRect(QRectF(m_pos.x(), m_pos.y(), m_width, m_height));
 
     //half fill
-    painter->setBrush(brush);
-    painter->drawRect(QRectF(m_pos.x(), m_pos.y(), m_width / 2, m_height));
+    //painter->setBrush(brush);
+    //painter->drawRect(QRectF(m_pos.x(), m_pos.y(), m_width / 2, m_height));
 
     //text above
     QString str;

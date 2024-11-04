@@ -39,12 +39,10 @@ public:
     virtual int id_number() = 0;
     virtual AttachTreeNodeId register_tree_node(AttachTreeNode* new_tree_node) = 0;
     virtual void unregister_tree_node(const AttachTreeNodeId& tree_node_id) = 0;
+
+    virtual AttachTreeNode* query(const AttachTreeNodeId& tree_node_id) = 0;
+
     virtual void set_tree_root_node(AttachTreeRootNode* root_node) = 0;
-    // 设置接口
-    virtual void on_set_node_type(const AttachTreeNodeId& tree_node_id) = 0;
-    virtual void on_set_node_direction(const AttachTreeNodeId& tree_node_id) = 0;
-    virtual void on_set_layer_info(const AttachTreeNodeId& tree_node_id) = 0;
-    virtual void on_set_params(const AttachTreeNodeId& tree_node_id) = 0;
 
     virtual void init_viewport(double dbu) = 0;
     virtual cm::Viewport *viewport() = 0;

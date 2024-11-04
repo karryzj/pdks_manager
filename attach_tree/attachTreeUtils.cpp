@@ -1,7 +1,7 @@
-#include <math.h>
-
 #include "attachTreeUtils.h"
 #include "attachTreeNodeMgr.h"
+#include "common_defines.h"
+#include "shapeDefines.h"
 #include "shapeDrawGraphicsItem.h"
 #include "shapeBase.h"
 #include "attachTreeRootNode.h"
@@ -10,6 +10,10 @@
 #include "AttachTreePrivateUtils.h"
 #include "transformE.h"
 #include "viewport.h"
+
+#include "configManager.h"
+#include "layerMgr.h"
+#include "layerDefines.h"
 
 using namespace at;
 using namespace sp;
@@ -255,7 +259,7 @@ bool AttachTreeUtils::copy_tree_node_to_new_parent_node(AttachTreeNode *copy_tre
         }
     }
 
-    auto new_node = at::AttachTreeUtils::deep_clone_tree_node(copy_tree_node, new_parent_tree_node, new_parent_idx);
+    auto new_node = at::AttachTreeUtils::deep_clone_tree_node(copy_tree_node, new_parent_node, new_parent_idx);
     new_node->update();
     return true;
 }
@@ -267,7 +271,7 @@ QPointF AttachTreeUtils::parent_attach_point_global_pos(AttachTreeNode *tree_nod
     return tree_node->tree_node_mgr()->viewport()->map_from_scene(parent_attach_point->pos());
 }
 
-QPointF AttachTreeUtils::attach_point(AttachTreeNode *tree_node, int attach_point_idx, bool global)
+QPointF AttachTreeUtils::attach_point_coord(AttachTreeNode *tree_node, int attach_point_idx, bool global)
 {
     sp::ShapeBase* shape = tree_node->shape();
 
@@ -310,7 +314,7 @@ QPointF AttachTreeUtils::attach_point(AttachTreeNode *tree_node, int attach_poin
     return global_trans.map(QPointF(0., 0.));
 }
 
-pm::PointE at::AttachTreeUtils::attach_exp_point(AttachTreeNode* tree_node, int attach_point_idx, bool global)
+pm::PointE at::AttachTreeUtils::attach_exp_point_coord(AttachTreeNode* tree_node, int attach_point_idx, bool global)
 {
     auto shape = tree_node->shape();
 
@@ -351,10 +355,52 @@ pm::PointE at::AttachTreeUtils::attach_exp_point(AttachTreeNode* tree_node, int 
     return global_exp;
 }
 
+QString AttachTreeUtils::attach_exp_point_rotate_angle(AttachTreeNode *tree_node, int attach_point_idx)
+{
+    auto point_items = tree_node->point_items();
+    if(point_items.size() <= attach_point_idx)
+    {
+        return "0";
+    }
+    return point_items[attach_point_idx]->rotate_angle();
+}
+
+QPointF AttachTreeUtils::point_coord(AttachTreeNode *tree_node, const QPointF &point, bool global)
+{
+    QTransform trans;
+    if (tree_node->node_direction() == NodeDirection::TOP_LEFT)
+    {
+        trans.scale(-1, 1);
+    }
+    else if (tree_node->node_direction() == NodeDirection::BOTTOM_LEFT)
+    {
+        trans.scale(-1, -1);
+    }
+    else if (tree_node->node_direction() == NodeDirection::BOTTOM_RIGHT)
+    {
+        trans.scale(1, -1);
+    }
+
+    trans.rotate(trans.m11() * trans.m22() * tree_node->shape()->rotate());
+
+    auto new_point = trans.map(point);
+
+    // local
+    if(!global)
+    {
+        return new_point;
+    }
+
+    // global
+    QTransform global_trans = tree_node->transform();
+    global_trans.translate(new_point.x(), new_point.y());
+    return global_trans.map(QPointF(0., 0.));
+}
+
 double AttachTreeUtils::distance(AttachTreeNode *tree_node1, int at_point_idx1, AttachTreeNode *tree_node2, int at_point_idx2)
 {
-    QPointF p1 = AttachTreeUtils::attach_point(tree_node1, at_point_idx1, true);
-    QPointF p2 = AttachTreeUtils::attach_point(tree_node2, at_point_idx2, true);
+    QPointF p1 = AttachTreeUtils::attach_point_coord(tree_node1, at_point_idx1, true);
+    QPointF p2 = AttachTreeUtils::attach_point_coord(tree_node2, at_point_idx2, true);
     double d_x = p1.x() - p2.x();
     double d_y = p1.y() - p2.y();
     return std::sqrt(d_x * d_x + d_y * d_y);
@@ -362,22 +408,22 @@ double AttachTreeUtils::distance(AttachTreeNode *tree_node1, int at_point_idx1, 
 
 pm::Expression AttachTreeUtils::distance_exp(AttachTreeNode *tree_node1, int at_point_idx1, AttachTreeNode *tree_node2, int at_point_idx2)
 {
-    pm::PointE p1 = AttachTreeUtils::attach_exp_point(tree_node1, at_point_idx1, true);
-    pm::PointE p2 = AttachTreeUtils::attach_exp_point(tree_node2, at_point_idx2, true);
+    pm::PointE p1 = AttachTreeUtils::attach_exp_point_coord(tree_node1, at_point_idx1, true);
+    pm::PointE p2 = AttachTreeUtils::attach_exp_point_coord(tree_node2, at_point_idx2, true);
     return p1.distance(p2);
 }
 
 pm::Expression AttachTreeUtils::x_distance_exp(AttachTreeNode *tree_node1, int at_point_idx1, AttachTreeNode *tree_node2, int at_point_idx2)
 {
-    pm::PointE p1 = AttachTreeUtils::attach_exp_point(tree_node1, at_point_idx1, true);
-    pm::PointE p2 = AttachTreeUtils::attach_exp_point(tree_node2, at_point_idx2, true);
+    pm::PointE p1 = AttachTreeUtils::attach_exp_point_coord(tree_node1, at_point_idx1, true);
+    pm::PointE p2 = AttachTreeUtils::attach_exp_point_coord(tree_node2, at_point_idx2, true);
     return p1.x() - p2.x();
 }
 
 pm::Expression AttachTreeUtils::y_distance_exp(AttachTreeNode *tree_node1, int at_point_idx1, AttachTreeNode *tree_node2, int at_point_idx2)
 {
-    pm::PointE p1 = AttachTreeUtils::attach_exp_point(tree_node1, at_point_idx1, true);
-    pm::PointE p2 = AttachTreeUtils::attach_exp_point(tree_node2, at_point_idx2, true);
+    pm::PointE p1 = AttachTreeUtils::attach_exp_point_coord(tree_node1, at_point_idx1, true);
+    pm::PointE p2 = AttachTreeUtils::attach_exp_point_coord(tree_node2, at_point_idx2, true);
     return p1.y() - p2.y();
 }
 
@@ -388,9 +434,10 @@ AttachTreeNode *AttachTreeUtils::deep_clone_tree_node(const at::AttachTreeNode* 
     const auto& cloned_params = cloned_tree_node->shape()->params();
     auto cloned_node_type = cloned_tree_node->node_type();
     auto cloned_node_direction = cloned_tree_node->node_direction();
+    auto cloned_node_boolean_subtract_type = cloned_tree_node->node_boolean_subtract_type();
     ly::LayerInfo* cloned_layer_info = cloned_tree_node->layer_info();
 
-    auto new_node = parent_node->add_child(parent_index, cloned_shape_name, cloned_params, cloned_node_type, cloned_node_direction, cloned_layer_info);
+    auto new_node = parent_node->add_child(parent_index, cloned_shape_name, cloned_params, cloned_node_type, cloned_node_direction, cloned_node_boolean_subtract_type, cloned_layer_info);
 
     // 克隆子对象
     const QMap<int, QVector<at::AttachTreeNode *>>& child_tree_node_map = cloned_tree_node->children();
@@ -493,7 +540,7 @@ void AttachTreeUtils::get_coordinate_inf(AttachTreeRootNode* current_root_node, 
     {
         // 获取非根节点的id
         point_inf.id = tree_node->id();
-        point_inf.pos = at::AttachTreeUtils::attach_exp_point(tree_node, point_inf.attach_point_idx, true);
+        point_inf.pos = at::AttachTreeUtils::attach_exp_point_coord(tree_node, point_inf.attach_point_idx, true);
     }
     else
     {
@@ -546,48 +593,14 @@ void AttachTreeUtils::find_coordinate(AttachTreeRootNode* root_node, AttachTreeN
     });
 }
 
-void AttachTreeUtils::get_anchors_inf(at::AttachTreeRootNode* current_root_node, QVector<AttachPointPosInf>& points_inf)
-{
-    get_anchors(current_root_node, points_inf);
-}
-
-void AttachTreeUtils::get_anchors(AttachTreeBaseNode* attach_tree_node,
-                                  QVector<AttachPointPosInf>& points_inf)
-{
-    // 使用TreeNode的递归遍历，这里实现对节点的处理
-    attach_tree_node->traversal_subtree([&](at::AttachTreeBaseNode* node)
-    {
-        // 根节点不做处理
-        if(dynamic_cast<at::AttachTreeRootNode * >(node))
-        {
-            return;
-        }
-
-        at::AttachTreeNode* sub_node = dynamic_cast<at::AttachTreeNode* >(node);
-        for(int attach_idx = 0; attach_idx < sub_node->point_items().size(); attach_idx++)
-        {
-            if(sub_node->is_anchor_point(attach_idx))
-            {
-                points_inf.push_back(
-                              AttachPointPosInf
-                {
-                    sub_node->id(),
-                    attach_idx,
-                    at::AttachTreeUtils::attach_exp_point(sub_node, attach_idx, true)
-                });
-            }
-        }
-    });
-}
-
-void AttachTreeUtils::set_anchors_inf( at::AttachTreeRootNode* current_root_node, const QVector<AttachPointPosInf>& points_inf)
-{
-    // 根据json中读出的锚点信息，查找到对应的treeNode节点并设置
-    for(const AttachPointPosInf &posInf : points_inf)
-    {
-        find_anchor(current_root_node, posInf.id, posInf.attach_point_idx);
-    }
-}
+// void AttachTreeUtils::set_anchors_inf( at::AttachTreeRootNode* current_root_node, const QVector<AttachPointPosInf>& points_inf)
+// {
+//     // 根据json中读出的锚点信息，查找到对应的treeNode节点并设置
+//     for(const AttachPointPosInf &posInf : points_inf)
+//     {
+//         set_tree_node_anchor_point(current_root_node, posInf);
+//     }
+// }
 
 void at::AttachTreeUtils::update_all_nodes_data(AttachTreeRootNode *current_root_node)
 {
@@ -616,25 +629,246 @@ void at::AttachTreeUtils::update_all_nodes_data(AttachTreeRootNode *current_root
     return;
 }
 
-void AttachTreeUtils::find_anchor(AttachTreeBaseNode* attach_tree_node, AttachTreeNodeId id, int attach_point_idx)
+AttachTreeNode *AttachTreeUtils::create_inner_rounded_corner(sp::ShapePointGraphicsItem *point_item, AttachTreeRootNode* root_node, ly::LayerMgr* ly_mgr)
 {
-    // 使用TreeNode的递归遍历，这里实现对节点的处理
-    attach_tree_node->traversal_subtree([ = ](at::AttachTreeBaseNode* node)
+    AttachTreeBaseNode* node = AttachTreeUtils::attach_tree_node_point_item_in(point_item, root_node);
+    AttachTreeNode* tree_node = dynamic_cast< AttachTreeNode*>(node);
+    if(nullptr == tree_node)
     {
-        // 根节点不做处理
-        if(dynamic_cast<at::AttachTreeRootNode * >(node))
+        return nullptr;
+    }
+    // 只能处理矩形的四个点和三角形的序号为1的点
+    int idx = AttachTreeUtils::point_item_index_in_tree_node(tree_node, point_item);
+    const auto& shape_name = tree_node->shape_name();
+
+    if(tree_node->node_type() != NodeType::ADD)
+    {
+        return nullptr;
+    }
+
+    if( (shape_name != SHAPE_RECTANGLE) && (shape_name != SHAPE_TRIANGLE))
+    {
+        return nullptr;
+    }
+
+    if( shape_name == SHAPE_TRIANGLE && idx != 1)
+    {
+        return nullptr;
+    }
+
+    // 读取配置中的内切矩形的尺寸
+    const QVariant & inner_corner_radius_var = cm::ConfigManager::instance()->query(CM_INNER_CORNER_RADIUS_KEY);
+    QString inner_corner_radius_str = inner_corner_radius_var.toString();
+    auto param_mgr = root_node->param_mgr();
+    bool is_num = pm::Expression::is_num(inner_corner_radius_str);
+    bool is_exp = pm::Expression::isExpression(param_mgr, inner_corner_radius_str);
+    if(false == is_num && false == is_exp)
+    {
+        return nullptr;
+    }
+
+    auto location_layer =  ly_mgr->get_layer_info_by_name(LAYER_LOCATION_LAYER_NAME);
+    if(nullptr == location_layer)
+    {
+        return nullptr;
+    }
+
+    // 创建一个delete的矩形
+    QVector<pm::ParamDecl> rectangle_params;
+    {
+        pm::ParamDecl width(SHAPE_RECTANGLE_WIDTH, inner_corner_radius_str);
+        pm::ParamDecl height(SHAPE_RECTANGLE_HEIGHT, inner_corner_radius_str);
+        pm::ParamDecl rotate(SHAPE_ROTATE, 0);
+        rectangle_params.append(width);
+        rectangle_params.append(height);
+        rectangle_params.append(rotate);
+    }
+
+    auto delete_rectangle_node = tree_node->add_child(idx, SHAPE_RECTANGLE, rectangle_params, NodeType::DELETE, NodeDirection::BOTTOM_LEFT, NodeBooleanSubtractType::ONLY_WITH_PARENT_NODE, location_layer);
+    if(nullptr == delete_rectangle_node)
+    {
+        return nullptr;
+    }
+
+    // 在delete_rectangle_node的1位置再加一个add的扇形
+    QVector<pm::ParamDecl> sector_params;
+    {
+        pm::ParamDecl sector_inside_radius(SHAPE_SECTOR_INSIDE_RADIUS, 0);
+        pm::ParamDecl sector_outside_radius(SHAPE_SECTOR_OUTSIDE_RADIUS, inner_corner_radius_str);
+        pm::ParamDecl sector_start_angle(SHAPE_SECTOR_START_ANGLE, 180);
+        pm::ParamDecl sector_end_angle(SHAPE_SECTOR_END_ANGLE, 270);
+        pm::ParamDecl sector_rotate_angle(SHAPE_ROTATE, 0);
+        sector_params.append(sector_inside_radius);
+        sector_params.append(sector_outside_radius);
+        sector_params.append(sector_start_angle);
+        sector_params.append(sector_end_angle);
+        sector_params.append(sector_rotate_angle);
+    }
+    auto add_sector_node = delete_rectangle_node->add_child(1, SHAPE_SECTOR, sector_params, NodeType::ADD, NodeDirection::BOTTOM_LEFT, NodeBooleanSubtractType::NONE, tree_node->layer_info());
+    if(nullptr == add_sector_node)
+    {
+        return nullptr;
+    }
+
+    return delete_rectangle_node;
+}
+
+AttachTreeNode *AttachTreeUtils::create_outer_rounded_corner(sp::ShapePointGraphicsItem *point_item, AttachTreeRootNode* root_node, ly::LayerMgr* ly_mgr)
+{
+    AttachTreeBaseNode* node = AttachTreeUtils::attach_tree_node_point_item_in(point_item, root_node);
+    AttachTreeNode* tree_node = dynamic_cast< AttachTreeNode*>(node);
+    if(nullptr == tree_node)
+    {
+        return nullptr;
+    }
+    // 只能处理矩形的四个点和三角形的序号为1的点
+    int idx = AttachTreeUtils::point_item_index_in_tree_node(tree_node, point_item);
+    const auto& shape_name = tree_node->shape_name();
+
+    if(tree_node->node_type() != NodeType::ADD)
+    {
+        return nullptr;
+    }
+
+    if( (shape_name != SHAPE_RECTANGLE) && (shape_name != SHAPE_TRIANGLE))
+    {
+        return nullptr;
+    }
+
+    if( shape_name == SHAPE_TRIANGLE && idx != 1)
+    {
+        return nullptr;
+    }
+
+    // 读取配置中的内切矩形的尺寸
+    const QVariant & inner_corner_radius_var = cm::ConfigManager::instance()->query(CM_INNER_CORNER_RADIUS_KEY);
+    QString inner_corner_radius_str = inner_corner_radius_var.toString();
+    auto param_mgr = root_node->param_mgr();
+    bool is_num = pm::Expression::is_num(inner_corner_radius_str);
+    bool is_exp = pm::Expression::isExpression(param_mgr, inner_corner_radius_str);
+    if(false == is_num && false == is_exp)
+    {
+        return nullptr;
+    }
+
+    auto location_layer =  ly_mgr->get_layer_info_by_name(LAYER_LOCATION_LAYER_NAME);
+    if(nullptr == location_layer)
+    {
+        return nullptr;
+    }
+
+    // 创建一个add的矩形
+    QVector<pm::ParamDecl> rectangle_params;
+    {
+        pm::ParamDecl width(SHAPE_RECTANGLE_WIDTH, inner_corner_radius_str);
+        pm::ParamDecl height(SHAPE_RECTANGLE_HEIGHT, inner_corner_radius_str);
+        pm::ParamDecl rotate(SHAPE_ROTATE, 0);
+        rectangle_params.append(width);
+        rectangle_params.append(height);
+        rectangle_params.append(rotate);
+    }
+
+    auto add_rectangle_node = tree_node->add_child(idx, SHAPE_RECTANGLE, rectangle_params, NodeType::ADD, NodeDirection::TOP_LEFT, NodeBooleanSubtractType::NONE, tree_node->layer_info());
+    if(nullptr == add_rectangle_node)
+    {
+        return nullptr;
+    }
+
+    // 在add_rectangle_node的1位置再加一个delete的扇形
+    QVector<pm::ParamDecl> sector_params;
+    {
+        pm::ParamDecl sector_inside_radius(SHAPE_SECTOR_INSIDE_RADIUS, 0);
+        pm::ParamDecl sector_outside_radius(SHAPE_SECTOR_OUTSIDE_RADIUS, inner_corner_radius_str);
+        pm::ParamDecl sector_start_angle(SHAPE_SECTOR_START_ANGLE, 180);
+        pm::ParamDecl sector_end_angle(SHAPE_SECTOR_END_ANGLE, 270);
+        pm::ParamDecl sector_rotate_angle(SHAPE_ROTATE, 0);
+        sector_params.append(sector_inside_radius);
+        sector_params.append(sector_outside_radius);
+        sector_params.append(sector_start_angle);
+        sector_params.append(sector_end_angle);
+        sector_params.append(sector_rotate_angle);
+    }
+    auto delete_sector_node = add_rectangle_node->add_child(1, SHAPE_SECTOR, sector_params, NodeType::DELETE, NodeDirection::TOP_LEFT, NodeBooleanSubtractType::ONLY_WITH_PARENT_NODE, location_layer);
+    if(nullptr == delete_sector_node)
+    {
+        return nullptr;
+    }
+
+    return add_rectangle_node;
+}
+
+void AttachTreeUtils::rotate_rounded_corner(AttachTreeNode *parent_node, int point_item_idx_in_parent, AttachTreeNode *rounded_node)
+{
+    auto parent_node_direction = parent_node->node_direction();
+    qreal basic_angle = 0;
+    qreal delat_angle = 0;
+    if(NodeDirection::TOP_LEFT == parent_node_direction)
+    {
+        basic_angle = 0;
+        delat_angle = -90;
+    }
+    else if(NodeDirection::TOP_RIGHT == parent_node_direction)
+    {
+        basic_angle = 90;
+        delat_angle = 90;
+    }
+    else if(NodeDirection::BOTTOM_LEFT == parent_node_direction)
+    {
+        basic_angle = -90;
+        delat_angle = 90;
+    }
+    else if(NodeDirection::BOTTOM_RIGHT == parent_node_direction)
+    {
+        basic_angle = -180;
+        delat_angle = -90;
+    }
+
+    qreal rotate_angle = basic_angle + point_item_idx_in_parent*delat_angle;
+    QString rotate_angle_str = QString::number(rotate_angle);
+    const auto& params = parent_node->params();
+    QString parent_angle = 0;
+    for(const auto& param : params)
+    {
+        if(param.key() == SHAPE_ROTATE)
+        {
+            parent_angle = param.expression();
+            break;
+        }
+    }
+
+    pm::Expression rounded_node_rotate_angle = pm::Expression(parent_angle) + pm::Expression(rotate_angle);
+    std::function<void(AttachTreeBaseNode*)> proc = [rounded_node_rotate_angle](AttachTreeBaseNode* node)
+    {
+        auto tree_node = dynamic_cast<AttachTreeNode*>(node);
+        if(nullptr == tree_node)
         {
             return;
         }
 
-        at::AttachTreeNode* sub_node = dynamic_cast<at::AttachTreeNode* >(node);
-        for(int attach_idx = 0; attach_idx < sub_node->point_items().size(); attach_idx++)
+        auto params = tree_node->params();
+        for(auto& param : params)
         {
-            AttachTreeNodeId nodeId = sub_node->id();
-            if(id == nodeId && attach_point_idx == attach_idx)
+            if(param.key() == SHAPE_ROTATE)
             {
-                sub_node->set_anchor_point(attach_idx, true);
+                qreal value = rounded_node_rotate_angle.to_double(tree_node->param_mgr());
+                param.set_value(value);
+                param.set_expression(rounded_node_rotate_angle.to_str());
+                break;
             }
         }
-    });
+        tree_node->set_params(params);
+    };
+    rounded_node->traversal_subtree(proc);
 }
+
+// void AttachTreeUtils::set_tree_node_anchor_point(AttachTreeBaseNode* node, const AttachPointPosInf& point_info)
+// {
+//     auto tree_node = node->tree_node_mgr()->query(point_info.id);
+//     Q_ASSERT(nullptr != tree_node);
+//     auto point_items = tree_node->point_items();
+//     Q_ASSERT(point_items.size() > point_info.attach_point_idx);
+//     auto point_item = point_items[point_info.attach_point_idx];
+//     Q_ASSERT(nullptr != point_item);
+//     point_item->set_anchor_point(true);
+//     point_item->set_rotate_angle(point_info.rotate_angle);
+// }

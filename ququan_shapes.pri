@@ -18,6 +18,7 @@ SP_INC = $$PWD/shape
 PR_INC = $$PWD/primitive
 MU_INC = $$PWD/muParser
 PDK_INC = $$PWD/pdk_manager
+CMD_INC = $$PWD/command
 
 LY_LIB = layer
 CM_LIB = common
@@ -27,3 +28,4 @@ SP_LIB = shape
 PR_LIB = primitive
 MU_LIB = muParser
 PDK_LIB = pdk_manager
+CMD_LIB = command

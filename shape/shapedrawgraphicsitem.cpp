@@ -49,7 +49,7 @@ void sp::ShapeDrawGraphicsItem::paint(QPainter* painter, const QStyleOptionGraph
         QPen pen(Qt::darkGray);
         pen.setStyle(Qt::DashLine);
         painter->setPen(pen);
-        painter->setRenderHint(QPainter::Antialiasing, true);
+        painter->setRenderHint(QPainter::Antialiasing, false);
         painter->drawPath(m_actual_draw_path);
     }
     else if(m_paint_type == PaintType::DRAW)
@@ -59,9 +59,9 @@ void sp::ShapeDrawGraphicsItem::paint(QPainter* painter, const QStyleOptionGraph
             return;
         }
         ly::layerUtils::setup_painter_draw_attribute_layer_info(mp_layer_info, * painter);
-        painter->setRenderHint(QPainter::Antialiasing, true);
+        //painter->setRenderHint(QPainter::Antialiasing, false);
         painter->drawPath(m_actual_draw_path);
-        painter->setRenderHint(QPainter::Antialiasing, true);
+        painter->setRenderHint(QPainter::Antialiasing, false);
         ly::layerUtils::setup_painter_fill_attribute_layer_info(mp_layer_info, * painter);
         painter->drawPath(m_actual_draw_path);
     }
@@ -71,7 +71,8 @@ void sp::ShapeDrawGraphicsItem::paint(QPainter* painter, const QStyleOptionGraph
 
 QRectF sp::ShapeDrawGraphicsItem::boundingRect() const
 {
-    return m_actual_draw_path.boundingRect();
+    QRectF rect = m_actual_draw_path.boundingRect();
+    return rect;
 }
 
 const QString& sp::ShapeDrawGraphicsItem::shape_name() const
@@ -92,6 +93,11 @@ QVector<ShapePointGraphicsItem*> sp::ShapeDrawGraphicsItem::get_point_items() co
 ShapeBase *ShapeDrawGraphicsItem::shape_info() const
 {
     return mp_shape;
+}
+
+void sp::ShapeDrawGraphicsItem::set_shape_info(sp::ShapeBase* shape)
+{
+    mp_shape = shape;
 }
 
 void ShapeDrawGraphicsItem::set_point_items_visible(bool visible) const

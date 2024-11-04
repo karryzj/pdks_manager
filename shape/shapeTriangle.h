@@ -33,11 +33,11 @@ private:
     mutable std::string m_height_exp;
 };
 
-class ShapeTriangleFacotry final : public ShapeFactoryBase
+class ShapeTriangleFactory final : public ShapeFactoryBase
 {
 public:
-    ShapeTriangleFacotry();
-    ~ShapeTriangleFacotry() override;
+    ShapeTriangleFactory();
+    ~ShapeTriangleFactory() override;
 
     ShapeBase *create_shape(const QString& shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const override;
 };

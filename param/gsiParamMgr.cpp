@@ -1,10 +1,11 @@
 
 
 #include "crypto.h"
+#include "dbPoint.h"
 #include "gsiDecl.h"
 #include "paramDecl.h"
 #include "paramMgr.h"
-
+#include "ParamUtils.h"
 
 
 namespace gsi
@@ -122,6 +123,44 @@ static bool isValid(pm::ParamMgr *p)
     return p->isValid();
 }
 
+static bool isValid_pvalue(pm::ParamMgr *p,QString key, QVariant val)
+{
+    pm::ParamDecl *pd= new pm::ParamDecl(key,val,"");
+    return p->isValid(pd);
+}
+
+QVector<QString> split_string(const QString &text, const QString& delimiter)
+{
+    QVector<QString> lines;
+    QStringList parts = text.split(delimiter);
+    for(auto str : parts)
+    {
+        lines.append(str);
+    }
+    return lines;
+}
+
+static std::vector<db::DPoint> gen_curve_points(pm::ParamMgr *p,QString equations,double distance)
+{
+    QVector<QString> sub_strs = split_string(equations, "\n");
+    QVector<pm::ParamDecl> params;
+    for(const auto& sub_str : sub_strs)
+    {
+        pm::ParamDecl param_equation("", sub_str);
+        params.push_back(param_equation);
+    }
+
+    auto points = pm::ParamUtils::gen_curve_points(p, params,distance);
+    std::vector<db::DPoint> dpoints;
+    for(auto p:points)
+    {
+        dpoints.push_back(db::DPoint(p.x(),p.y()));
+    }
+    return dpoints;
+}
+
+
+
 Class<pm::ParamMgr> decl_paramMgr ("param", "ParamMgr",
     constructor ("new", &new_v,
                         "@brief new pm::ParamMgr.\n"
@@ -153,8 +192,14 @@ Class<pm::ParamMgr> decl_paramMgr ("param", "ParamMgr",
     gsi::method_ext ("parse", &parse, gsi::arg ("exp"),
                        "@brief parse(exp).\n"
                        )+
+    gsi::method_ext ("gen_curve_points", &gen_curve_points, gsi::arg ("equations"),gsi::arg ("distance"),
+                       "@brief gen_curve_points(equations,distance).\n"
+                       )+
     gsi::method_ext ("isValid", &isValid_rule, gsi::arg ("exp"),
                         "@brief isValid(exp).\n"
+                       )+
+    gsi::method_ext ("isValid", &isValid_pvalue, gsi::arg ("p"),gsi::arg ("value"),
+                       "@brief isValid(exp).\n"
                        )+
     gsi::method_ext ("isValid", &isValid,
                        "@brief isValid().\n"

@@ -46,6 +46,7 @@ public:
     QRectF boundingRect() const override final;
     // 一些触发事件
     sp::ShapeBase* shape_info() const;
+    void set_shape_info(sp::ShapeBase* shape);
 
     void set_point_items_visible(bool visible) const;
 

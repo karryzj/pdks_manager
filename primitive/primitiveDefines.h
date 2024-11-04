@@ -28,6 +28,13 @@
 #define PRI_DIRECTION_TOP_RIGHT                                    "top right"                      // 右上
 #define PRI_DIRECTION_BOTTOM_RIGHT                                 "bottom right"                   // 右下
 
+#define PRI_BOOLEAN_SUBTRACT_TYPE                                  "boolean subtract"               // 布尔减
+#define PRI_BOOLEAN_SUBTRACT_TYPE_TYPE_OPTION                      "boolean subtract type option"   // 布尔减对应的下拉框名
+#define PRI_BOOLEAN_SUBTRACT_NONE                                  "none"                           // 不进行delete处理
+#define PRI_BOOLEAN_SUBTRACT_ONLY_PARENT                           "only with parent node"          // 仅处理父节点
+#define PRI_BOOLEAN_SUBTRACT_ONLY_PARENT_AND_BROTHER               "only with parent and brother nodes"  // 仅处理父节点和兄弟节点
+#define PRI_BOOLEAN_SUBTRACT_PARENT_AND_CHILD                      "with parent and child nodes"    // 处理父节点和子节点
+
 #define PRI_LAYER                                                  "layer"                          // 图层
 #define PRI_LAYER_TYPEOPTION                                       "layer type option"              // 类型对应的下拉框名
 #define PRI_LAYER_NONE                                             "none"                           // 无
@@ -62,12 +69,24 @@
 
 #define PRI_TREE_WIDGET_MENU_ANCHOR_POINT_ACTION_NAME              "set as anchor point"
 #define PRI_TREE_WIDGET_MENU_COORD_POINT_ACTION_NAME               "set as coordinate point"
+
 #define PRI_TREE_WIDGET_MENU_ROTATE_ACTION_NAME                    "rotate"
+
+#define PRI_TREE_WIDGET_MENU_MIRROR_ACTION_NAME                    "mirror"
+#define PRI_TREE_WIDGET_MENU_MIRROR_AXIS                           "mirror axis"
+#define PRI_TREE_WIDGET_MENU_MIRROR_X                              "mirror by x axis"
+#define PRI_TREE_WIDGET_MENU_MIRROR_Y                              "mirror by y axis"
+
+#define PRI_TREE_WIDGET_MENU_CONVERT_SHAPE_ACTION_NAME             "convert shape"
+#define PRI_TREE_WIDGET_MENU_CONVERT_CIRCLE_ACTION_NAME            "convert to circle"
+#define PRI_TREE_WIDGET_MENU_CONVERT_ELLIPSE_ACTION_NAME           "convert to ellipse"
+#define PRI_TREE_WIDGET_MENU_CONVERT_QUARDANGLE_ACTION_NAME        "convert to quardangle"
+#define PRI_TREE_WIDGET_MENU_CONVERT_SECTOR_ACTION_NAME            "convert to sector"
+#define PRI_TREE_WIDGET_MENU_CONVERT_TRIANGLE_ACTION_NAME          "convert to triangle"
 
 #define PRI_TREE_WIDGET_MENU_ATTRIBUTE_ACTION_NAME                 "attribute"
 
 #define PRI_TREE_WIDGET_MENU_SHAPE_INFO_ACTION_NAME                "shape info"
-
 // undo redo import save
 #define PRI_UNDO_ACTION_NAME                                       "undo"
 #define PRI_REDO_ACTION_NAME                                       "redo"
@@ -92,14 +111,25 @@
 #define PRI_DIRECTION_LABEL_NAME                                   "direction"
 #define PRI_EXPRESSION_LABEL_NAME                                  "expression"
 #define PRI_VALUE_LABEL_NAME                                       "value"
+#define PRI_COPY_EXPRESSION_LABEL_NAME                             "copy expression"
 #define PRI_X_DISTANCE_LABEL_NAME                                  "Δx"
 #define PRI_X_DISTANCE_EXPRSSION_LINE_EDIT_NAME                    "Δx_expression"
 #define PRI_X_DISTANCE_VALUE_LINE_EDIT_NAME                        "Δx_value"
+#define PRI_COPY_X_EXPRESSION_LABEL_NAME                           "copy Δx expression"
 #define PRI_Y_DISTANCE_LABEL_NAME                                  "Δy"
 #define PRI_Y_DISTANCE_EXPRSSION_LINE_EDIT_NAME                    "Δy_expression"
 #define PRI_Y_DISTANCE_VALUE_LINE_EDIT_NAME                        "Δy_value"
+#define PRI_COPY_Y_EXPRESSION_LABEL_NAME                           "copy Δy expression"
 #define PRI_DISTANCE_LINE_EDIT_NAME                                "distance"
 #define PRI_DISTANCE_EXPRESSION_LINE_EDIT_NAME                     "distance_expression"
 #define PRI_DISTANCE_VALUE_LINE_EDIT_NAME                          "distance_value"
+#define PRI_COPY_DISTANCE_EXPRESSION_LABEL_NAME                    "copy distance expression"
+
+#define PRI_GRID_RESOLUTION_ACTION_NAME                            "grid_resolution"
+#define PRI_ARC_LEN_ACTION_NAME                                    "arc_length"
+#define PRI_ROUNDED_CORNER_ACTION_NAME                             "rounded_corner"
+#define PRI_GRID_RESOLUTION_DEFAULT_VALUE                          0.01
+
+#define PRI_GRID_RESOLUTION_ACTION_NAME                            "grid_resolution"
 // others...
 #endif // PRIMITIVEDEFINES_H

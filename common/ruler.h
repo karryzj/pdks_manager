@@ -7,7 +7,7 @@
 
 #include "common.h"
 
-#define R_WIDTH_PROPOSAL 100
+#define R_WIDTH_PROPOSAL 60
 #define R_HEIGHT_PROPOSAL 18
 #define R_TEXT_HEIGHT 6
 #define R_CORNER_SPACE 100

@@ -64,12 +64,14 @@ void ShapeEllipse::update_variables()
 void ShapeEllipse::update_attach_pointes()
 {
     // 按照leftTop,leftDown,rightDown,rightTop的顺序进行排列
+    pm::Expression major_diameter = pm::Expression(m_semi_major_axis_length_exp.c_str()) * 2;
+    pm::Expression minor_diameter = pm::Expression(m_semi_minor_axis_length_exp.c_str()) * 2;
     m_attach_points_e =
     {
-        pm::PointE(-pm::Expression(m_semi_major_axis_length_exp.c_str()), m_semi_minor_axis_length_exp),
-        pm::PointE(-pm::Expression(m_semi_major_axis_length_exp.c_str()), -pm::Expression(m_semi_minor_axis_length_exp.c_str())),
-        pm::PointE(m_semi_major_axis_length_exp, -pm::Expression(m_semi_minor_axis_length_exp.c_str())),
-        pm::PointE(m_semi_major_axis_length_exp, m_semi_minor_axis_length_exp),
+        pm::PointE(pm::Expression("0"), minor_diameter),
+        pm::PointE(pm::Expression("0"), pm::Expression("0")),
+        pm::PointE(major_diameter, pm::Expression("0")),
+        pm::PointE(major_diameter, minor_diameter),
     };
 }
 
@@ -104,21 +106,24 @@ QPainterPath ShapeEllipse::build_path()
         path.addEllipse(QPointF(0, 0), m_semi_major_axis_length, m_semi_minor_axis_length);
     }
 
+
+    path.translate(m_semi_major_axis_length, m_semi_minor_axis_length);
+
     return path;
 }
 
-ShapeEllipseFacotry::ShapeEllipseFacotry()
+ShapeEllipseFactory::ShapeEllipseFactory()
     : ShapeFactoryBase()
 {
 
 }
 
-ShapeEllipseFacotry::~ShapeEllipseFacotry()
+ShapeEllipseFactory::~ShapeEllipseFactory()
 {
 
 }
 
-ShapeBase *ShapeEllipseFacotry::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
+ShapeBase *ShapeEllipseFactory::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
 {
     return new ShapeEllipse(param_mgr, params, parent_attach_point);
 }

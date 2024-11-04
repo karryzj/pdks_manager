@@ -6,6 +6,7 @@
 #include "ui_mainwindow.h"
 #include "primitiveMgrWindow.h"
 #include "pdkMgrWindow.h"
+#include "layoutView.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -13,7 +14,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-
+    qq::LayoutView::init({"Python"}, true);
 }
 
 MainWindow::~MainWindow()
@@ -23,14 +24,14 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_pushButton_primitive_clicked()
 {
-    pr::PrimitiveMgrWindow *popupWindow = new pr::PrimitiveMgrWindow();
+    pr::PrimitiveMgrWindow *popupWindow = new pr::PrimitiveMgrWindow(this);
     popupWindow->show();
 }
 
 
 void MainWindow::on_pushButton_pdk_clicked()
 {
-    pdk::PdkMgrWindow *pdkMgrWindow = new pdk::PdkMgrWindow();
+    pdk::PdkMgrWindow *pdkMgrWindow = new pdk::PdkMgrWindow(this);
     pdkMgrWindow->show();
 }
 

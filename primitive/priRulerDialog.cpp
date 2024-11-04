@@ -5,9 +5,11 @@
 
 #include <AttachTreeNode.h>
 #include <PriGraphicsView.h>
+#include <QClipboard>
 #include <QCloseEvent>
 #include <ShapePointGraphicsItem.h>
 #include <cmath>
+#include <qapplication.h>
 #include <qboxlayout.h>
 #include <qcombobox.h>
 #include <qlabel.h>
@@ -43,62 +45,90 @@ PriRulerDialog::~PriRulerDialog()
 void PriRulerDialog::init()
 {
     QVBoxLayout* main_layout = new QVBoxLayout(this);
-    QGridLayout *gridLayout = new QGridLayout(this);
-    main_layout->addLayout(gridLayout);
+    QGridLayout *grid_layout = new QGridLayout(this);
+    main_layout->addLayout(grid_layout);
+
+    QLabel* direction_label = new QLabel(tr(PRI_DIRECTION_LABEL_NAME), this);
+    QLabel* expression_label = new QLabel(tr(PRI_EXPRESSION_LABEL_NAME), this);
+    QLabel* value_label = new QLabel(tr(PRI_VALUE_LABEL_NAME), this);
+    QLabel* copy_expression_label = new QLabel(tr(PRI_COPY_EXPRESSION_LABEL_NAME), this);
+    grid_layout->addWidget(direction_label, 0, 0, Qt::AlignCenter);
+    grid_layout->addWidget(expression_label, 0, 1, Qt::AlignCenter);
+    grid_layout->addWidget(value_label, 0, 2, Qt::AlignCenter);
+    grid_layout->addWidget(copy_expression_label, 0, 3, Qt::AlignCenter);
+
+    QLabel* x_distance_label = new QLabel(tr(PRI_X_DISTANCE_LABEL_NAME), this);
+    QLineEdit* x_expression_line_edit = new QLineEdit( this);
+    x_expression_line_edit->setObjectName(tr(PRI_X_DISTANCE_EXPRSSION_LINE_EDIT_NAME));
+    x_expression_line_edit->setEnabled(false);
+    x_expression_line_edit->setFixedWidth(300);
+    QLineEdit* x_value_line_edit = new QLineEdit( this);
+    x_value_line_edit->setObjectName(tr(PRI_X_DISTANCE_VALUE_LINE_EDIT_NAME));
+    x_value_line_edit->setEnabled(false);
+    QPushButton *copy_x_expression_button = new QPushButton(tr(PRI_COPY_X_EXPRESSION_LABEL_NAME), this);
+    connect(copy_x_expression_button, &QPushButton::clicked, this, [x_expression_line_edit]()
     {
-        QLabel* direction_label = new QLabel(tr(PRI_DIRECTION_LABEL_NAME), this);
-        QLabel* expression_label = new QLabel(tr(PRI_EXPRESSION_LABEL_NAME), this);
-        QLabel* value_label = new QLabel(tr(PRI_VALUE_LABEL_NAME), this);
+        // 获取 QLineEdit 的内容
+        QString text = x_expression_line_edit->text();
+        // 将内容复制到剪贴板
+        QClipboard *clipboard = QApplication::clipboard();
+        clipboard->setText(text);
+        // 弹窗提示已经复制了文本内容
+        QMessageBox::information(nullptr, "Copied", "The expression of Δx has been copied to clipboard.");
+    });
+    grid_layout->addWidget(x_distance_label, 1, 0, Qt::AlignCenter);
+    grid_layout->addWidget(x_expression_line_edit, 1, 1, Qt::AlignCenter);
+    grid_layout->addWidget(x_value_line_edit, 1, 2, Qt::AlignCenter);
+    grid_layout->addWidget(copy_x_expression_button, 1, 3, Qt::AlignCenter);
 
-        gridLayout->addWidget(direction_label, 0, 0, Qt::AlignCenter);
-        gridLayout->addWidget(expression_label, 0, 1, Qt::AlignCenter);
-        gridLayout->addWidget(value_label, 0, 2, Qt::AlignCenter);
-    }
-
+    QLabel* y_distance_label = new QLabel(tr(PRI_Y_DISTANCE_LABEL_NAME), this);
+    QLineEdit* y_expression_line_edit = new QLineEdit( this);
+    y_expression_line_edit->setObjectName(tr(PRI_Y_DISTANCE_EXPRSSION_LINE_EDIT_NAME));
+    y_expression_line_edit->setEnabled(false);
+    y_expression_line_edit->setFixedWidth(300);
+    QLineEdit* y_value_line_edit = new QLineEdit( this);
+    y_value_line_edit->setObjectName(tr(PRI_Y_DISTANCE_VALUE_LINE_EDIT_NAME));
+    y_value_line_edit->setEnabled(false);
+    QPushButton *copy_y_expression_button = new QPushButton(tr(PRI_COPY_Y_EXPRESSION_LABEL_NAME), this);
+    connect(copy_y_expression_button, &QPushButton::clicked, this, [y_expression_line_edit]()
     {
-        QLabel* x_distance_label = new QLabel(tr(PRI_X_DISTANCE_LABEL_NAME), this);
-        QLineEdit* x_expression_line_edit = new QLineEdit( this);
-        x_expression_line_edit->setObjectName(tr(PRI_X_DISTANCE_EXPRSSION_LINE_EDIT_NAME));
-        x_expression_line_edit->setEnabled(false);
-        x_expression_line_edit->setFixedWidth(300);
-        QLineEdit* x_value_line_edit = new QLineEdit( this);
-        x_value_line_edit->setObjectName(tr(PRI_X_DISTANCE_VALUE_LINE_EDIT_NAME));
-        x_value_line_edit->setEnabled(false);
+        // 获取 QLineEdit 的内容
+        QString text = y_expression_line_edit->text();
+        // 将内容复制到剪贴板
+        QClipboard *clipboard = QApplication::clipboard();
+        clipboard->setText(text);
+        // 弹窗提示已经复制了文本内容
+        QMessageBox::information(nullptr, "Copied", "The expression of Δy has been copied to clipboard.");
+    });
+    grid_layout->addWidget(y_distance_label, 2, 0, Qt::AlignCenter);
+    grid_layout->addWidget(y_expression_line_edit, 2, 1, Qt::AlignCenter);
+    grid_layout->addWidget(y_value_line_edit, 2, 2, Qt::AlignCenter);
+    grid_layout->addWidget(copy_y_expression_button, 2, 3, Qt::AlignCenter);
 
-        gridLayout->addWidget(x_distance_label, 1, 0, Qt::AlignCenter);
-        gridLayout->addWidget(x_expression_line_edit, 1, 1, Qt::AlignCenter);
-        gridLayout->addWidget(x_value_line_edit, 1, 2, Qt::AlignCenter);
-    }
-
+    QLabel* distance_label = new QLabel(tr(PRI_DISTANCE_LINE_EDIT_NAME), this);
+    QLineEdit* expression_line_edit = new QLineEdit(this);
+    expression_line_edit->setObjectName(tr(PRI_DISTANCE_EXPRESSION_LINE_EDIT_NAME));
+    expression_line_edit->setEnabled(false);
+    expression_line_edit->setFixedWidth(300);
+    QLineEdit* value_line_edit = new QLineEdit( this);
+    value_line_edit->setObjectName(tr(PRI_DISTANCE_VALUE_LINE_EDIT_NAME));
+    value_line_edit->setEnabled(false);
+    QPushButton *copy_distance_expression_button = new QPushButton(tr(PRI_COPY_DISTANCE_EXPRESSION_LABEL_NAME), this);
+    connect(copy_distance_expression_button, &QPushButton::clicked, this, [expression_line_edit]()
     {
-        QLabel* y_distance_label = new QLabel(tr(PRI_Y_DISTANCE_LABEL_NAME), this);
-        QLineEdit* y_expression_line_edit = new QLineEdit( this);
-        y_expression_line_edit->setObjectName(tr(PRI_Y_DISTANCE_EXPRSSION_LINE_EDIT_NAME));
-        y_expression_line_edit->setEnabled(false);
-        y_expression_line_edit->setFixedWidth(300);
-        QLineEdit* y_value_line_edit = new QLineEdit( this);
-        y_value_line_edit->setObjectName(tr(PRI_Y_DISTANCE_VALUE_LINE_EDIT_NAME));
-        y_value_line_edit->setEnabled(false);
+        // 获取 QLineEdit 的内容
+        QString text = expression_line_edit->text();
+        // 将内容复制到剪贴板
+        QClipboard *clipboard = QApplication::clipboard();
+        clipboard->setText(text);
+        // 弹窗提示已经复制了文本内容
+        QMessageBox::information(nullptr, "Copied", "The expression of distance has been copied to clipboard.");
+    });
 
-        gridLayout->addWidget(y_distance_label, 2, 0, Qt::AlignCenter);
-        gridLayout->addWidget(y_expression_line_edit, 2, 1, Qt::AlignCenter);
-        gridLayout->addWidget(y_value_line_edit, 2, 2, Qt::AlignCenter);
-    }
-
-    {
-        QLabel* distance_label = new QLabel(tr(PRI_DISTANCE_LINE_EDIT_NAME), this);
-        QLineEdit* expression_line_edit = new QLineEdit(this);
-        expression_line_edit->setObjectName(tr(PRI_DISTANCE_EXPRESSION_LINE_EDIT_NAME));
-        expression_line_edit->setEnabled(false);
-        expression_line_edit->setFixedWidth(300);
-        QLineEdit* value_line_edit = new QLineEdit( this);
-        value_line_edit->setObjectName(tr(PRI_DISTANCE_VALUE_LINE_EDIT_NAME));
-        value_line_edit->setEnabled(false);
-
-        gridLayout->addWidget(distance_label, 3, 0, Qt::AlignCenter);
-        gridLayout->addWidget(expression_line_edit, 3, 1, Qt::AlignCenter);
-        gridLayout->addWidget(value_line_edit, 3, 2, Qt::AlignCenter);
-    }
+    grid_layout->addWidget(distance_label, 3, 0, Qt::AlignCenter);
+    grid_layout->addWidget(expression_line_edit, 3, 1, Qt::AlignCenter);
+    grid_layout->addWidget(value_line_edit, 3, 2, Qt::AlignCenter);
+    grid_layout->addWidget(copy_distance_expression_button, 3, 3, Qt::AlignCenter);
 }
 
 void pr::PriRulerDialog::set_connect()

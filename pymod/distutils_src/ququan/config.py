@@ -53,6 +53,7 @@ QUQUAN_PYMOD_PATH = QUQUAN_ROOT_PATH.joinpath("pymod")
 
 POINT_DISTANCE=1 # um 用作生成圆取样点
 
+sys.path.append(str(QUQUAN_ROOT_PATH))
 sys.path.append(str(QUQUAN_PYMOD_PATH))
 os.add_dll_directory(QUQUAN_ROOT_PATH)
 

@@ -34,6 +34,8 @@
 #include "iconsForceLink.h"
 #include "pmForceLink.h"
 #include "dbWriter.h"
+#include "commonForceLink.h"
+#include "primitivePcell.h"
 
 static lay::LayoutView *mp_view=0;
 static MainWindow *mp_mainwindow=0;
@@ -102,7 +104,13 @@ MainWindow::MainWindow(QWidget *parent)
 
     /** UI **/
     init_page_editor();
-    qq_view->add_layout();
+    qq_view->add_layout({{1,0},{2,0}});
+
+
+    auto basic=db::LibraryManager::instance ().lib_by_name("BASIC");
+    db::Library *lib = db::LibraryManager::instance ().lib (basic.second);
+    ////QString f=QString::fromStdString("D:/project/ququan_shapes/build/mingw-Debug/data/primitives/cate1/demo1/data.json");
+    //lib->layout().register_pcell("xxxxx",new pdk::PrimitivePcell(f));
     update_layer_list();
     update_cells();
     update_libs();
@@ -155,6 +163,8 @@ void MainWindow::update_layer_list()
     //view->transaction (tl::to_string (tr ("New layer")));
     //view->update_content ();
     //view->commit ();
+    view->add_missing_layers();
+
 }
 
 void MainWindow::update_cells()

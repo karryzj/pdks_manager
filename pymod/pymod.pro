@@ -6,6 +6,7 @@ include($$PWD/../ququan_shapes.pri)
 
 TEMPLATE = subdirs
 SUBDIRS = \
+  common \
   param \ 
 
 

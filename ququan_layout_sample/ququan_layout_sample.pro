@@ -23,9 +23,9 @@ HEADERS += \
 FORMS += \
     mainwindow.ui
 
-INCLUDEPATH += $$PM_INC
-DEPENDPATH += $$PM_INC
-LIBS += -L$$DESTDIR -l$$PM_LIB
+INCLUDEPATH += $$PM_INC $$CM_INC $$PDK_INC
+DEPENDPATH += $$PM_INC $$CM_INC $$PDK_INC
+LIBS += -L$$DESTDIR -l$$PM_LIB -l$$CM_LIB -l$$PDK_LIB
 
 
 # Default rules for deployment.

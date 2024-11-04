@@ -10,6 +10,7 @@
         <file>img/14.png</file>
         <file>img/15.png</file>
         <file>img/circle.png</file>
+        <file>img/curve.png</file>		
         <file>img/ellipse.png</file>
         <file>img/favicon.png</file>
         <file>img/lay_del.png</file>
@@ -28,6 +29,8 @@
         <file>img/top_align.png</file>
         <file>img/bottom_align.png</file>
         <file>img/ruler.png</file>
+        <file>img/rounded_corner.png</file>
+        <file>img/grid_resolution.png</file>		
         <file>img/add.png</file>
         <file>img/close.png</file>
         <file>img/edit.png</file>

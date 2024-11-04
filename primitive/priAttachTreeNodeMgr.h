@@ -37,24 +37,19 @@ private:
     // 注册&反注册
     at::AttachTreeNodeId register_tree_node(at::AttachTreeNode* new_tree_node) override;
     void unregister_tree_node(const at::AttachTreeNodeId& tree_node_id) override;
-    void set_tree_root_node(at::AttachTreeRootNode* root_node) override;
-    // 设置接口
-    void on_set_node_type(const at::AttachTreeNodeId& tree_node_id) override;
-    void on_set_node_direction(const at::AttachTreeNodeId& tree_node_id) override;
-    void on_set_layer_info(const at::AttachTreeNodeId& tree_node_id) override;
-    void on_set_params(const at::AttachTreeNodeId& tree_node_id) override;
 
-    at::AttachTreeNodeId allocate_tree_node_new_id(const at::AttachTreeNodeId& tree_node_id) override;
-private:
+    at::AttachTreeNode* query(const at::AttachTreeNodeId& tree_node_id) override;
+
+    void set_tree_root_node(at::AttachTreeRootNode* root_node) override;
+
     cm::Viewport *viewport() override;
     void init_viewport(double dbu) override;
+    at::AttachTreeNodeId allocate_tree_node_new_id(const at::AttachTreeNodeId& tree_node_id) override;
 private:
     QPainterPath global_painter_path(const at::AttachTreeNodeId& tree_node_id) const;
     void adjust_point_items_position_and_setup_visible(const at::AttachTreeNodeId& tree_node_id) const;
     bool is_tree_node_in_dic(const at::AttachTreeNodeId& id,
                              QMap<const ly::LayerInfo*, const QSet<at::AttachTreeNodeId>> & dic);
-signals:
-    void update_anchor();
 
 private slots:
     // HINT@leixunyong。调用此接口前要保证成员变量都已经更新完毕。另外此接口可能有效率问题，需要后续更新。

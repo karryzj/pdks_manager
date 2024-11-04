@@ -33,6 +33,15 @@ enum class NodeDirection : quint8
     TOP_RIGHT,
     NONE          // 使用此参数代表当前节点没有此无属性
 };
+
+// 定义node的delete行为
+enum class NodeBooleanSubtractType : quint8
+{
+    NONE  = 0,
+    ONLY_WITH_PARENT_NODE,              // 仅删除父节点： delete类型的节点只对自己的父节点产生作用。并且会忽略掉全部location类型的父节点，只对第一个不是location的父节点产生作用。
+    WITH_PARENT_AND_BROTHER_NODE,       // 删除父节点+兄弟节点：
+    WITH_PARENT_AND_CHILD_NODE,         // 删除父节点+子节点
+};
 }
 
 #endif // ATTACHTREEDEFINES_H

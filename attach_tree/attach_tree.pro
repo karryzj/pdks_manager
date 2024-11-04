@@ -28,8 +28,8 @@ SOURCES += \
     attachTreeRootNode.cpp \
     attachTreeUtils.cpp
 
-INCLUDEPATH += $$CM_INC $$PM_INC $$SP_INC
-DEPENDPATH += $$CM_INC $$PM_INC $$SP_INC
-LIBS += -L$$DESTDIR -lcommon -lparam -lshape
+INCLUDEPATH += $$CM_INC $$PM_INC $$SP_INC $$LY_INC
+DEPENDPATH += $$CM_INC $$PM_INC $$SP_INC $$LY_INC
+LIBS += -L$$DESTDIR -lcommon -lparam -lshape -llayer
 
 

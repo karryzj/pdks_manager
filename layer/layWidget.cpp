@@ -125,6 +125,9 @@ void LayerWidget::addItems()
     item->setSizeHint(listItemWidget->sizeHint() * 1.5);
     mp_list_widget->setItemWidget(item, listItemWidget);
 
+    connect(listItemWidget, &LayListItemWidget::styleChanged, this, &LayerWidget::onItemStyleChanged);
+    connect(listItemWidget, &LayListItemWidget::layerStateChanged, this, &LayerWidget::onItemStateChanged);
+
     updateButtonState();
 }
 
@@ -146,6 +149,7 @@ void LayerWidget::removeItem()
             });
             if(itor != m_layers.end())
             {
+                emit delete_layer_info(*itor);
                 m_layers.removeOne(*itor);
             }
             // mp_layer_mgr->remove_layer_info(layer_info);

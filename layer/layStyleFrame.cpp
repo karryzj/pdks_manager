@@ -70,7 +70,7 @@ void LayStyleFrame::paintEvent(QPaintEvent *event)
     Q_UNUSED(event);
 
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setRenderHint(QPainter::Antialiasing, false);
     layerUtils::setup_painter_by_layer_info(&m_style,painter);
     // 绘制矩形的边框
     painter.drawRect(rect());

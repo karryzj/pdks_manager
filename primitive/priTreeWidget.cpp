@@ -171,7 +171,7 @@ pr::PriTreeWidgetItem *pr::PriTreeWidget::search_tree_widget_item(QGraphicsItem 
 
     if(nullptr == tree_widget_graphics_item)
     {
-        return nullptr;
+        tree_widget_graphics_item = mp_root_item;
     }
 
     return dynamic_cast<PriTreeWidgetItem*>(tree_widget_graphics_item);

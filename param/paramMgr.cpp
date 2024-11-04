@@ -27,6 +27,9 @@ void ParamMgr::refresh_params_value()
     {
         if (it == m_params.begin())
         {
+            param_parser.SetExpr((*it)->expression().toStdWString());
+            auto new_ret = param_parser.Eval();
+            (*it)->set_value(new_ret);
             param_parser.DefineConst((*it)->key().toStdWString(), (*it)->value());
         }
         else
@@ -145,7 +148,7 @@ bool ParamMgr::add_rule(const Rule &rule)
 
 void ParamMgr::del_rule(const Rule &rule)
 {
-    del_rule(rule);
+    del_rule(rule.to_str());
 }
 
 void ParamMgr::del_rule(const QString &rule_str)
@@ -160,7 +163,7 @@ void ParamMgr::del_rule(const QString &rule_str)
     }
 }
 
-const QVector<Rule> ParamMgr::rules() const
+QVector<Rule>& ParamMgr::rules()
 {
     return m_rules;
 }
@@ -245,6 +248,35 @@ bool ParamMgr::isValid(ParamDecl *param_decl)
     }
     double new_value = param_decl->value();
     rule_parser.DefineConst(new_name, new_value);
+
+    //更新相关参数 add by supeng
+    for (auto it = m_params.begin(); it != m_params.end(); ++it)
+    {
+        if((*it)->key().toStdWString() == new_name)
+        {
+            continue;
+        }
+        if (it == m_params.begin())
+        {
+            rule_parser.SetExpr((*it)->expression().toStdWString());
+            auto new_ret = rule_parser.Eval();
+            rule_parser.DefineConst((*it)->key().toStdWString(), new_ret);
+        }
+        else
+        {
+            try
+            {
+                rule_parser.SetExpr((*it)->expression().toStdWString());
+                auto new_ret = rule_parser.Eval();
+                rule_parser.DefineConst((*it)->key().toStdWString(), new_ret);
+            }
+            catch(mu::Parser::exception_type &e)
+            {
+                std::wcout << "Error: " << e.GetMsg() << std::endl;
+                return false;
+            }
+        }
+    }
 
     for (auto item : m_rules)
     {
@@ -374,5 +406,13 @@ void ParamMgr::reset()
     m_params.clear();
     m_rules.clear();
 }
+
+QVector<Rule> ParamMgr::clone_rules()
+{
+    QVector<Rule> rules;
+    rules = m_rules;
+    return rules;
+}
+
 
 }

@@ -115,6 +115,25 @@ void PrimitiveMgr::save_primitive(QString name)
     pri->save();
 }
 
+Primitive *PrimitiveMgr::load_python_primitive(QString name)
+{
+    Primitive *pri;
+    auto it = m_primitives.find(name);
+    if (it == m_primitives.end())
+    {
+        pri = new Primitive(name);
+        m_primitives.insert(name, pri);
+    }
+    else
+    {
+        pri = it.value();
+        if (pri->load_py_json())
+            return NULL;
+    }
+    return pri;
+
+}
+
 PrimitiveMgr *PrimitiveMgr::instance()
 {
     static PrimitiveMgr sp_instance;  // HINT@leixunyong。之前的写法没有进行内存管理，把析构交给了程序关闭时的系统回收。

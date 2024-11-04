@@ -32,7 +32,11 @@ QPainterPath ShapeDrawBooleanProcessor::boolean_substraction_opera(const QPainte
     QPainterPath result;
     for(const auto& out_polygen : out)
     {
-        result.addPolygon(ShapeDrawBooleanProcessor::db_polygen_to_qt_polygen(out_polygen));
+        auto polygen  = ShapeDrawBooleanProcessor::db_polygen_to_qt_polygen(out_polygen);
+        QPainterPath path;
+        path.addPolygon(polygen);
+        path.closeSubpath();
+        result = result.united(path);
     }
     result.closeSubpath();
     return result;
@@ -48,7 +52,7 @@ db::Polygon ShapeDrawBooleanProcessor::path_to_db_polygon(const QPainterPath &pa
     {
         auto magnify_x = itor->x() * MAGNITFY_RATE;
         auto magnify_y = itor->y() * MAGNITFY_RATE;
-        db::point<int> pt(magnify_x, magnify_y);  // HINT@leixunyong。这里
+        db::point<int> pt(magnify_x, magnify_y);
         points.push_back(pt);
     }
 
@@ -59,6 +63,11 @@ db::Polygon ShapeDrawBooleanProcessor::path_to_db_polygon(const QPainterPath &pa
 
 QPolygonF ShapeDrawBooleanProcessor::db_polygen_to_qt_polygen(const db::Polygon &db_polygen)
 {
+    if(db_polygen.vertices() <= 2)
+    {
+        return QPolygonF{};
+    }
+
     QPolygonF qt_polygen;
     for (auto it = db_polygen.begin_hull(); it != db_polygen.end_hull(); ++it)
     {

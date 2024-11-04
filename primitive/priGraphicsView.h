@@ -6,6 +6,7 @@
 #include <QGraphicsItem>
 #include <QLabel>
 #include <QTimer>
+#include <PriAuxiliaryDragBox.h>
 
 namespace cm
 {
@@ -27,6 +28,7 @@ class ShapePointGraphicsItem;
 namespace pr
 {
 class PriGraphicsScene;
+class PriMouseFollower;
 class Primitive;
 class PriGraphicsView final: public QGraphicsView
 {
@@ -37,7 +39,8 @@ public:
 
     void set_primitive(Primitive* pri);
     Primitive* current_primitive() const;
-
+    PriAuxiliaryDragBox* drag_box();
+    PriMouseFollower*  mouser_follower() const;
 public slots:
     void align_point_items(const QString& align_type);
 
@@ -69,7 +72,6 @@ private slots:
     void single_click_no_double_click();
 private:
     void setup_point_item_param_by_pos(const QPointF& pos, sp::ShapePointGraphicsItem* point_item);
-
 private:
     double m_scaleFactor;
 
@@ -81,6 +83,10 @@ private:
     bool m_is_double_click = false;
     QTimer m_click_timer;
     QPoint m_cache_single_click_pos;
+
+    PriAuxiliaryDragBox m_drag_box;
+
+    PriMouseFollower*  mp_mouser_follower;
 };
 }
 #endif // GRAPHICSVIEW_H

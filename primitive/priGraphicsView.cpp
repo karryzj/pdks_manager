@@ -14,7 +14,9 @@
 
 #include "priGraphicsView.h"
 #include "AttachTreeNode.h"
+#include "common_defines.h"
 #include "primitive.h"
+#include "ruler.h"
 #include "shapeBase.h"
 #include "shapeDefines.h"
 #include "viewport.h"
@@ -22,6 +24,11 @@
 #include "primitiveDefines.h"
 #include "attachTreeUtils.h"
 #include "priUtils.h"
+
+#include "configManager.h"
+#include "shapeUtils.h"
+
+#include <PriMouseFollower.h>
 
 namespace pr
 {
@@ -33,17 +40,24 @@ PriGraphicsView::PriGraphicsView(PriGraphicsScene *scene, QWidget *parent)
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     setViewportUpdateMode(QGraphicsView::FullViewportUpdate);   // 视图变化时，让整个视图的内容都更新。
-    setRenderHint(QPainter::Antialiasing);      // 启用抗锯齿
+    setRenderHint(QPainter::Antialiasing, false);      // 启用抗锯齿
     setDragMode(QGraphicsView::RubberBandDrag);    // 使得能够进行拖拽
     setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);     // 仅重绘边界矩形
 
     m_click_timer.setSingleShot(true);
     bool succeed = connect(&m_click_timer, &QTimer::timeout, this, &PriGraphicsView::single_click_no_double_click);
     Q_ASSERT(succeed);
+
+    scene->addItem(&m_drag_box);
+    mp_mouser_follower = new PriMouseFollower(this);
+    scene->addItem(mp_mouser_follower);
 }
 
 PriGraphicsView::~PriGraphicsView()
 {
+    scene()->removeItem(&m_drag_box);
+    scene()->removeItem(mp_mouser_follower);
+    SAFE_DELETE(mp_mouser_follower);
 }
 
 void PriGraphicsView::set_primitive(Primitive* pri)
@@ -54,6 +68,16 @@ void PriGraphicsView::set_primitive(Primitive* pri)
 pr::Primitive *pr::PriGraphicsView::current_primitive() const
 {
     return mp_pri;
+}
+
+PriAuxiliaryDragBox *PriGraphicsView::drag_box()
+{
+    return &m_drag_box;
+}
+
+pr::PriMouseFollower *pr::PriGraphicsView::mouser_follower() const
+{
+    return mp_mouser_follower;
 }
 
 void PriGraphicsView::align_point_items(const QString &align_type)
@@ -311,14 +335,28 @@ void PriGraphicsView::align_point_items(const QString &align_type)
 }
 
 
+
+QPoint get_corrected_mouse_position(QGraphicsView *view, const QPointF &scenePos)
+{
+    // 将场景坐标转换为视图坐标
+    QPoint viewPos = view->mapFromScene(scenePos);
+
+    // 将视图坐标转换为全局屏幕坐标
+    QPoint globalPos = view->mapToGlobal(viewPos);
+
+    // 设置鼠标位置
+    return globalPos;
+}
+
 void PriGraphicsView::mouseMoveEvent(QMouseEvent *event)
 {
     QGraphicsView::mouseMoveEvent(event);
 
     QPoint pos = event->pos();
     // 将视图坐标转换为场景坐标
-    QPointF scenePos = mapToScene(pos);
-    emit mouseMoved(scenePos);
+    QPointF scene_pos = mapToScene(pos);
+    m_drag_box.set_cursor_in_dragging_circle(scene_pos);
+    emit mouseMoved(scene_pos);
 
     // 右侧区域的阈值，比如右侧10%区域
     int rightAreaThreshold = width() * 0.1;
@@ -326,47 +364,48 @@ void PriGraphicsView::mouseMoveEvent(QMouseEvent *event)
     {
         emit mouseLeaveRightArea();
     }
+
+    if(event->buttons() & Qt::LeftButton )    // 按住进行拖拽
+    {
+        // 辅助拖拽框
+        if(m_drag_box.tree_node() && m_drag_box.has_started())
+        {
+            m_drag_box.set_is_moving(true);
+            m_drag_box.set_current_moving_pos(scene_pos);
+            scene()->update();
+        }
+    }
+
+    // 设置鼠标位置是格点分辨率的整数倍
+    {
+        qreal res = cm::ConfigManager::instance()->query(CM_LOGIC_GRID_RESOLUTION_KEY).toDouble();
+        if(res >= 0.001)
+        {
+            // 调整场景坐标
+            QPointF adjusted_logic_pos = PriUtils::closest_grid_point(scene_pos, mp_pri->at_root());
+            auto adjusted_scene_pos = mp_pri->tree_node_mgr()->viewport()->map_to_scene(adjusted_logic_pos);
+            // 设置鼠标位置
+            mp_mouser_follower->set_corrected_mouse_pos(get_corrected_mouse_position(this, adjusted_scene_pos));
+            scene()->update();
+        }
+    }
+
+    update();
 }
 
 void PriGraphicsView::contextMenuEvent(QContextMenuEvent *event)
 {
     QGraphicsView::contextMenuEvent(event);
     // 将事件位置转换为场景坐标
+    // 将事件位置转换为场景坐标
     QPointF scene_pos = mapToScene(event->pos());
     QPoint global_pos = event->globalPos();
     // 获取该位置的 QGraphicsItem
-    QVector<QGraphicsItem*> clicked_items;
-    {
-        const auto& items = scene()->items();
-        for(const auto& item : items)
-        {
-            if(dynamic_cast<sp::ShapeDrawGraphicsItem * >(item) == nullptr && dynamic_cast<sp::ShapePointGraphicsItem * >(item) == nullptr)
-            {
-                continue;
-            }
-
-            QRectF range = item->boundingRect();
-            if(range.contains(scene_pos))
-            {
-                clicked_items.push_back(item);
-            }
-        }
-    }
-
+    QList<QGraphicsItem *> items_at_pos = scene()->items();
     sp::ShapeDrawGraphicsItem * shape_item = nullptr;
     sp::ShapePointGraphicsItem *  point_item = nullptr;
-    for(auto p : clicked_items)
-    {
-        if(nullptr == shape_item)
-        {
-            shape_item = dynamic_cast<sp::ShapeDrawGraphicsItem*>(p);
-        }
 
-        if(nullptr == point_item)
-        {
-            point_item = dynamic_cast<sp::ShapePointGraphicsItem*>(p);
-        }
-    }
+    pr::PriUtils::classify_graphics_items(mp_pri, scene_pos, items_at_pos, shape_item, point_item);
 
     if (point_item)
     {
@@ -380,21 +419,44 @@ void PriGraphicsView::contextMenuEvent(QContextMenuEvent *event)
 
 void PriGraphicsView::wheelEvent(QWheelEvent *event)
 {
-    QGraphicsView::wheelEvent(event);
     int delta = event->delta();
     QPointF point = mp_pri->tree_node_mgr()->viewport()->map_from_scene(event->position());
 
     if (delta > 0)
     {
-        mp_pri->tree_node_mgr()->viewport()->zoom_in(point, delta);
+        auto pri_scene = dynamic_cast<PriGraphicsScene*>(scene());
+        if(pri_scene)
+        {
+            qreal res = cm::ConfigManager::instance()->query(CM_LOGIC_GRID_RESOLUTION_KEY).toDouble();
+            qreal scale = pri_scene->ruler()->micron();
+            if(scale > res)
+            {
+                mp_pri->tree_node_mgr()->viewport()->zoom_in(point, delta);
+            }
+        }
     }
     else
     {
         mp_pri->tree_node_mgr()->viewport()->zoom_out(point, -delta);
+    }
 
+    if(event->buttons() & Qt::LeftButton )
+    {
+        if(m_drag_box.tree_node() && m_drag_box.has_started() && m_drag_box.is_moveing())
+        {
+            // 获取鼠标当前的视图坐标
+            QPoint view_pos = event->pos();
+            // 将视图坐标转换为场景坐标
+            QPointF scene_pos = mapToScene(view_pos);
+            m_drag_box.set_current_moving_pos(scene_pos);
+            scene()->update();
+        }
     }
 
     update();
+
+    // 调用基类的 wheelEvent 处理其他默认行为
+    QGraphicsView::wheelEvent(event);
 }
 
 void PriGraphicsView::keyPressEvent(QKeyEvent *event)
@@ -416,18 +478,19 @@ void PriGraphicsView::keyPressEvent(QKeyEvent *event)
     {
         mp_pri->tree_node_mgr()->viewport()->pan_down();
     }
-
-
-    if(event->key() == Qt::Key_Escape)
+    else if(event->key() == Qt::Key_Escape)
     {
         emit key_escape_press();
+    }
+    else if(event->key() == Qt::Key_Delete)
+    {
+        m_drag_box.set_tree_node(nullptr);
     }
 }
 
 void PriGraphicsView::mousePressEvent(QMouseEvent *event)
 {
     QGraphicsView::mousePressEvent(event);
-
     if(event->button() == Qt::LeftButton)
     {
         // 将事件位置转换为场景坐标
@@ -444,12 +507,25 @@ void PriGraphicsView::mousePressEvent(QMouseEvent *event)
             point_item->setVisible(true);
             point_item->setSelected(true);
             emit mouse_left_button_press_item(point_item);
+            m_drag_box.reset();
         }
         else if(shape_item)
         {
-            shape_item->setVisible(true);
-            shape_item->set_point_items_visible(true);
-            emit mouse_left_button_press_item(shape_item);
+            auto tree_node = at::AttachTreeUtils::attach_tree_node_shape_item_in(shape_item, mp_pri->at_root());
+
+            m_drag_box.set_tree_node(tree_node);
+            if(m_drag_box.set_cursor_in_dragging_circle(scene_pos))
+            {
+                m_drag_box.set_has_started(true);
+                m_drag_box.set_started_point(scene_pos);
+                scene()->update();
+            }
+            else
+            {
+                shape_item->setVisible(true);
+                shape_item->set_point_items_visible(true);
+                emit mouse_left_button_press_item(shape_item);
+            }
         }
         else
         {
@@ -476,10 +552,19 @@ void PriGraphicsView::mousePressEvent(QMouseEvent *event)
                 // 在场景中添加一个圆形
                 auto cache = sp::ShapePointGraphicsItem::cachedItem;
                 sp::ShapePointGraphicsItem::cachedItem = mp_pri->at_root()->origin_point();
-                emit mp_pri->at_root()->origin_point()->send_dragged_rectangle_info(mp_pri->at_root()->origin_point(), scene_pos);
+                emit mp_pri->at_root()->origin_point()->send_dragged_rectangle_info(mp_pri->at_root()->origin_point(), mp_mouser_follower->scene_pos());
                 sp::ShapePointGraphicsItem::cachedItem = cache;
             }
-
+            if(!m_drag_box.set_cursor_in_dragging_circle(scene_pos))
+            {
+                m_drag_box.reset();
+            }
+            else
+            {
+                m_drag_box.set_has_started(true);
+                m_drag_box.set_started_point(scene_pos);
+                m_drag_box.set_started_point(scene_pos);
+            }
         }
         mp_pri->at_root()->origin_point()->setVisible(true); // HINT@leixunyong。这里这么干是因为不进行额外设置的话，会导致不可见。
         // 设置单击事件的延迟。这里的逻辑是，在200ms内，如果没有触发双击事件，那么就会执行超时事件。否则就什么都不做。
@@ -513,6 +598,20 @@ void PriGraphicsView::mouseReleaseEvent(QMouseEvent *event)
                     m_cache_point_items.push_back(point_item);
                 }
             }
+        }
+    }
+
+    // 检查是否是鼠标左键进行了释放
+    if (event->button() == Qt::LeftButton)
+    {
+        if(m_drag_box.tree_node() && m_drag_box.has_started() && m_drag_box.is_moveing())
+        {
+            // 将事件位置转换为场景坐标
+            QPointF scene_pos = mapToScene(event->pos());
+            m_drag_box.set_current_moving_pos(scene_pos);
+            m_drag_box.use_modification();
+            m_drag_box.reset();
+            mp_pri->at_root()->tree_node_mgr()->update();
         }
     }
 
@@ -584,5 +683,4 @@ void PriGraphicsView::setup_point_item_param_by_pos(const QPointF &pos, sp::Shap
 
     tree_node->set_params(params);
 }
-
 }

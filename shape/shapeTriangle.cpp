@@ -79,18 +79,18 @@ QPainterPath ShapeTriangle::build_path()
     return path;
 }
 
-ShapeTriangleFacotry::ShapeTriangleFacotry()
+ShapeTriangleFactory::ShapeTriangleFactory()
     : ShapeFactoryBase()
 {
 
 }
 
-ShapeTriangleFacotry::~ShapeTriangleFacotry()
+ShapeTriangleFactory::~ShapeTriangleFactory()
 {
 
 }
 
-ShapeBase *ShapeTriangleFacotry::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
+ShapeBase *ShapeTriangleFactory::create_shape(const QString &shape_name, pm::ParamMgr *param_mgr, const QVector<pm::ParamDecl> &params, ShapePointGraphicsItem* parent_attach_point) const
 {
     return new ShapeTriangle(param_mgr, params, parent_attach_point);
 }

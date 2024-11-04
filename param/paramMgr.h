@@ -29,6 +29,7 @@ class PM_PUBLIC ParamMgr final : public QObject
 {
     Q_OBJECT
 public:
+    friend class ParamUtils;
     ParamMgr();
     ~ParamMgr() override;
 
@@ -47,7 +48,7 @@ public:
     bool add_rule(const Rule &rule);
     void del_rule(const Rule &rule);
     void del_rule(const QString &rule_str);
-    const QVector<Rule> rules() const;
+    QVector<Rule>& rules();
     bool isValid();
     bool isValid(const Rule &rule);
     bool isValid(ParamDecl *param);
@@ -57,6 +58,7 @@ public:
     double calc_expr(const QString &exp);
     double calc_expr(const QString &exp, bool &ok);
     void reset();
+    QVector<Rule> clone_rules();
 
 private:
     QList<ParamDecl*> m_params;

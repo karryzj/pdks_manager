@@ -64,10 +64,22 @@ namespace mu
 		resulting in a significant performance increase.
 		Complementary to a set of internally implemented functions the parser is able to handle
 		user defined functions and variables.
-	*/
+	*/	
+
+
 	class API_EXPORT_CXX ParserBase
 	{
 		friend class ParserTokenReader;
+
+	//quanModify
+	public:
+		//try catch not realize
+		ParserByteCode &CreateFuncRPN(std::vector<value_type*>& paramlist);
+
+		ParserByteCode &GetFuncRPN(const string_type& a_sExpr, std::vector<value_type*>& paramlist) {
+			SetExpr(a_sExpr);
+			return CreateFuncRPN(paramlist);
+		}
 
 	private:
 
@@ -188,6 +200,8 @@ namespace mu
 		const char_type* ValidInfixOprtChars() const;
 
 		void SetArgSep(char_type cArgSep);
+		void SetByteCode(const ParserByteCode& a_ByteCode);
+
 		char_type GetArgSep() const;
 
 	protected:

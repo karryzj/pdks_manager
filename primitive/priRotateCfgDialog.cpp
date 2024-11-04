@@ -3,7 +3,7 @@
 #include <QDoubleValidator>
 
 PriRotateCfgDialog::PriRotateCfgDialog(QWidget *parent)
-    : QDialog(parent)
+    : QDialog(parent), m_rotate_cfg{"0", 0, 0}
     , ui(new Ui::PriRotateCfgDialog)
 {
     ui->setupUi(this);
@@ -27,25 +27,41 @@ PriRotateCfgDialog::~PriRotateCfgDialog()
 
 RotateCfg PriRotateCfgDialog::get_result()
 {
-    RotateCfg cfg;
+    return m_rotate_cfg;
+}
 
-    cfg.degrees = ui->lineEdit_degrees->text();
+RotateCfg PriRotateCfgDialog::get_old_result()
+{
+    return m_old_rotate_cfg;
+}
+
+void PriRotateCfgDialog::on_buttonBox_accepted()
+{
+    m_old_rotate_cfg = m_rotate_cfg;
+    m_rotate_cfg.degrees = ui->lineEdit_degrees->text();
     if (ui->radio_by->isChecked())
     {
-        cfg.by_to = 0;
+        m_rotate_cfg.by_to = 0;
     }
     else
     {
-        cfg.by_to = 1;
+        m_rotate_cfg.by_to = 1;
     }
     if (ui->radio_include->isChecked())
     {
-        cfg.child_self = 0;
+        m_rotate_cfg.child_self = 0;
     }
     else
     {
-        cfg.child_self = 1;
+        m_rotate_cfg.child_self = 1;
     }
 
-    return cfg;
+    accept();
 }
+
+
+void PriRotateCfgDialog::on_buttonBox_rejected()
+{
+    reject();
+}
+

@@ -23,8 +23,9 @@ LIBS += "$$PYTHONLIBFILE" -L$$QUQUAN_LAYOUT_LIB_DIR -lklayout_tl -lklayout_gsi -
 win32 {
 
   isEmpty(OSTYPE) {
+    #QMAKE_POST_LINK += $$sprintf($$QMAKE_MKDIR_CMD, $$shell_path($$DESTDIR_PYMOD)) && $(COPY) $(DESTDIR_TARGET) $$shell_path($$DESTDIR_PYMOD/$${TARGET}$${PYTHONEXTSUFFIX})
     QMAKE_POST_LINK += (if not exist $$shell_path($$DESTDIR_PYMOD) mkdir $$shell_path($$DESTDIR_PYMOD)) && $(COPY) $(DESTDIR_TARGET) $$shell_path($$DESTDIR_PYMOD/$${TARGET}$${PYTHONEXTSUFFIX})
-  } else {
+} else {
     QMAKE_POST_LINK += $(MKDIR) $$DESTDIR_PYMOD && $(COPY) $(DESTDIR_TARGET) $$DESTDIR_PYMOD/$${TARGET}$${PYTHONEXTSUFFIX}
   }
 
@@ -79,8 +80,9 @@ INSTALLS = lib_target
 !equals(REALMODULE, "") {
 
   isEmpty(OSTYPE) {
-    QMAKE_POST_LINK += && (if not exist $$shell_path($$DESTDIR_PYMOD/$$REALMODULE) $(MKDIR) $$shell_path($$DESTDIR_PYMOD/$$REALMODULE)) && $(COPY) $$shell_path($$PWD/distutils_src/klayout/$$REALMODULE/*.py) $$shell_path($$DESTDIR_PYMOD/$$REALMODULE)
-  } else {
+    #QMAKE_POST_LINK += && $$sprintf($$QMAKE_MKDIR_CMD, $$shell_path($$DESTDIR_PYMOD/$$REALMODULE)) && $(COPY) $$shell_path($$PWD/distutils_src/klayout/$$REALMODULE/*.py) $$shell_path($$DESTDIR_PYMOD/$$REALMODULE)
+    QMAKE_POST_LINK += && (if not exist $$shell_path($$DESTDIR_PYMOD/$$REALMODULE) mkdir $$shell_path($$DESTDIR_PYMOD/$$REALMODULE)) && $(COPY) $$shell_path($$PWD/distutils_src/klayout/$$REALMODULE/*.py) $$shell_path($$DESTDIR_PYMOD/$$REALMODULE)
+} else {
     QMAKE_POST_LINK += && $(MKDIR) $$DESTDIR_PYMOD/$$REALMODULE && $(COPY) $$PWD/distutils_src/klayout/$$REALMODULE/*.py $$DESTDIR_PYMOD/$$REALMODULE
   }
 

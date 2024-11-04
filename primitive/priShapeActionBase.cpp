@@ -22,12 +22,14 @@ PriShapeActionBase::PriShapeActionBase(const QIcon &icon,
                                        PrimitiveWindow *parent,
                                        bool add_type,
                                        bool add_direction,
+                                       bool add_boolean_subtract_type,
                                        bool add_layer,
                                        ly::LayerWidget* layer_widget)
     : QAction{icon, shape_name, parent}
     , m_shape_name(shape_name)
     , m_add_type(add_type)
     , m_add_direction(add_direction)
+    , m_add_boolean_subtract_type(add_boolean_subtract_type)
     , m_add_layer(add_layer)
     , mp_layer_widget(layer_widget)
     , mp_mw(parent)
@@ -49,7 +51,7 @@ PriShapeDialog* PriShapeActionBase::ui_form()
     {
         delete mp_ui;
     }
-    mp_ui = new PriShapeDialog(m_shape_name, m_add_type, m_add_direction, m_add_layer, mp_layer_widget, mp_mw->current_primitive());
+    mp_ui = new PriShapeDialog(m_shape_name, m_add_type, m_add_direction, m_add_layer, m_add_boolean_subtract_type,  mp_layer_widget, mp_mw->current_primitive());
     mp_ui->update_all();
     return mp_ui;
 }

@@ -6,16 +6,18 @@
 #include <QWidget>
 namespace pdk
 {
-
+class PdkInstance;
 class PdkParamTechRuleWidget : public QWidget
 {
     Q_OBJECT
 public:
-    explicit PdkParamTechRuleWidget(QWidget *parent = nullptr);
+    explicit PdkParamTechRuleWidget(PdkInstance *pdk_instance, QWidget *parent = nullptr);
+    void fillData();
+    void clear_view();
 
 private:
     void setupUi();
-    void fillData();
+    PdkInstance         *mp_pdk_instance;
     QListWidget         *mp_list_widget;
     // QStandardItemModel  *mp_model;
 signals:

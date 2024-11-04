@@ -10,6 +10,8 @@
 #include <QVBoxLayout>
 #include <QLabel>
 #include <QKeyEvent>
+#include <QGraphicsPolygonItem>
+#include <QUndoStack>
 
 QT_BEGIN_NAMESPACE
 
@@ -54,14 +56,15 @@ class Primitive;
 class PrimitiveAnchorUi;
 class PrimitiveCoordinateUi;
 class PriRulerDialog;
-class PrimitiveWindow: public QMainWindow
+class PriDockWidget;
+class PrimitiveWindow final: public QMainWindow
 {
     Q_OBJECT
 public:
     PrimitiveWindow(QWidget* parent = nullptr, QString pri_name = "default" /*图元名称**/,
                     bool new_create = true/*是否是新建，false-加载*/);
 
-    ~PrimitiveWindow();
+    ~PrimitiveWindow() override;
 
     void fill_data();
     void fill_tree_node();
@@ -88,16 +91,18 @@ private:
     void connect_new_tree_node(at::AttachTreeNode* new_tree_node);
 
 private:
-    void add_new_tree_node(const QString& shape_name,
-                           const QVector<pm::ParamDecl> & params,
-                           at::NodeType node_type,
-                           at::NodeDirection node_direction,
-                           ly::LayerInfo* layer_info);
+    at::AttachTreeNode* add_new_tree_node(const QString& shape_name,
+                                          const QVector<pm::ParamDecl> & params,
+                                          at::NodeType node_type,
+                                          at::NodeDirection node_direction,
+                                          at::NodeBooleanSubtractType node_boolean_subtract_type,
+                                          ly::LayerInfo* layer_info);
     void save_img();
     void fit_view();
     void restore_view();
     void on_view_changed();
-    void process_polygen_params(QVector<pm::ParamDecl>& param_list, at::AttachTreeNode* tree_node);
+
+    void match_viewport();
 
 private slots:
     void newly_draw_shape_dialog();
@@ -112,14 +117,23 @@ private slots:
     void add_dragged_rectangle_info(sp::ShapePointGraphicsItem* point_item,
                                     QPointF end_point);
     void update_current_primitive();
+    void delete_tree_nodes_with_layer_info(ly::LayerInfo* layer_info);
     void record_mouse_left_button_click_point(const QPoint& pos);
     void align_points();
     void rule_2_points_distance();
+    void setup_current_grid_resolution();
     void cancel_current_operations();
     void finish_pickup_polygen_point();
     void connect_tree_node_with_mw();
     void redo();
     void undo();
+    void set_arc_length();
+    void set_rounded_corner_params();
+
+    void add_inner_rounded_corner_for_shape();
+    void add_outer_rounded_corner_for_shape();
+
+    void on_dock_widget_resize();
 signals:
     // scene选择改变之后，发送给treewidget的信号
     void scene_selection_changed_to_tree(QGraphicsScene* scene);
@@ -128,9 +142,6 @@ signals:
 signals:
     // 删除锚点信号
     void scene_delete_node_to_anchor_widget(int node_id, int point_idx_in_shape);
-
-    // 提取参数
-    void add_new_param_for_polygen(const QString& name, const QString& expression, const QString& desc);
 
     void align_operation(const QString& align_type);
 private:
@@ -142,6 +153,14 @@ private:
     pm::ParamMgr*  mp_param_mgr;
     PriGraphicsScene* mp_graphics_scene;
     PriGraphicsView* mp_graphics_view;
+
+    PriDockWidget* mp_dock_widget_top;
+    PriDockWidget* mp_dock_widget_bottom;
+    PriDockWidget* mp_param_list_dock;
+    PriDockWidget* mp_param_constraints_dock;
+    PriDockWidget* mp_coord_anchor_dock;
+    PriDockWidget* mp_anchor_dock;
+
     PriTreeWidget* mp_pri_tree_widget;
     QLabel* mp_mouse_pos_label;
     Primitive* mp_pri;
@@ -155,8 +174,10 @@ private:
     // 用于收集在界面上选中的坐标点
     bool m_is_recording = false;
     bool m_is_shift_pressed = false;
+
     QVector<QPair<QPointF, sp::ShapePointGraphicsItem*>> m_chosen_coord_points;
     sp::ShapePointGraphicsItem* mp_polygen_cache_point = nullptr;
+    QGraphicsPolygonItem m_preview_polygen;
 
     QAction* m_cache_action = nullptr;
 

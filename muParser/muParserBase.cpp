@@ -81,7 +81,7 @@ namespace mu
 	};
 
 	const int ParserBase::s_MaxNumOpenMPThreads = 16;
-
+	int prAssign = -1;   //Parser modify
 	//------------------------------------------------------------------------------
 	/** \brief Constructor.
 		\param a_szFormula the formula to interpret.
@@ -261,19 +261,43 @@ namespace mu
 		m_pTokenReader->ReInit();
 	}
 
-	//---------------------------------------------------------------------------
+
 	void ParserBase::OnDetectVar(string_type* /*pExpr*/, int& /*nStart*/, int& /*nEnd*/)
 	{}
 
-	//---------------------------------------------------------------------------
-	/** \brief Returns the bytecode of the current expression.
+
+	/** \brief Returns a copy of the bytecode of the current expression.
 	*/
 	const ParserByteCode& ParserBase::GetByteCode() const
 	{
+		// If a variable factory is defined the bytecode may contain references to implicitely 
+		// created variables. 
+//		if (m_pTokenReader->HasVarCreator())
+//			Error(ecBYTECODE_IMPORT_EXPORT_DISABLED);
+
 		return m_vRPN;
 	}
 
-	//---------------------------------------------------------------------------
+
+	/** \brief Restore a previously saved bytecode. */
+	void ParserBase::SetByteCode(const ParserByteCode& a_ByteCode)
+	{
+		// If a variable factory is defined the bytecode may contain references to dynamically
+		// created variables. 
+//		if (m_pTokenReader->HasVarCreator())
+//			Error(ecBYTECODE_IMPORT_EXPORT_DISABLED);
+
+		m_vRPN = a_ByteCode;
+
+		// restore expression environment
+		string_type expr;
+		std::tie(expr, m_vStringBuf) = a_ByteCode.RestoreEnvironment();
+		m_pTokenReader->SetFormula(expr);
+
+		m_pParseFormula = &ParserBase::ParseCmdCode;
+	}
+
+
 	/** \brief Returns the version of muparser.
 		\param eInfo A flag indicating whether the full version info should be
 					 returned or not.
@@ -635,7 +659,7 @@ namespace mu
 			// built in operators
 		case cmEND:      return -5;
 		case cmARG_SEP:  return -4;
-		case cmASSIGN:   return -1;
+		case cmASSIGN:   return prAssign; //Parser modify
 		case cmELSE:
 		case cmIF:       return  0;
 		case cmLAND:     return  prLAND;
@@ -964,10 +988,16 @@ namespace mu
 
 			if (optTok.GetCode() == cmASSIGN)
 			{
-				if (valTok2.GetCode() != cmVAR)
-					Error(ecUNEXPECTED_OPERATOR, -1, _T("="));
+                //Parser modify
+				if (prAssign == -1) {
+					if (valTok2.GetCode() != cmVAR)
+						Error(ecUNEXPECTED_OPERATOR, -1, _T("="));
 
-				m_vRPN.AddAssignOp(valTok2.GetVar());
+					m_vRPN.AddAssignOp(valTok2.GetVar());
+				}
+				else if (prAssign == prCMP) {
+					m_vRPN.AddOp(optTok.GetCode());
+				}
 			}
 			else
 				m_vRPN.AddOp(optTok.GetCode());
@@ -1256,6 +1286,275 @@ namespace mu
 		return stack[m_nFinalResultIdx];
 	}
 
+	//Parser modify
+	ParserByteCode& ParserBase::CreateFuncRPN(std::vector<value_type*>& paramlist)
+	{
+		if (!m_pTokenReader->GetExpr().length())
+			Error(ecUNEXPECTED_EOF, 0);
+
+		std::stack<token_type> stOpt, stVal;
+		std::stack<int> stArgCount;
+		token_type opta, opt;  // for storing operators
+		token_type val, tval;  // for storing value
+		int ifElseCounter = 0;
+
+		prAssign = prCMP;
+		std::map<value_type*, int> mapIndex;  // for storing variables
+		value_type* curVar;
+		ReInit();
+
+		stArgCount.push(1);
+			
+		for (;;)
+		{
+			opt = m_pTokenReader->ReadNextToken();
+
+			switch (opt.GetCode())
+			{
+				//
+				// Next three are different kind of value entries
+				//
+			case cmSTRING:
+				if (stOpt.empty())
+					Error(ecSTR_RESULT, m_pTokenReader->GetPos(), opt.GetAsString());
+
+				opt.SetIdx((int)m_vStringBuf.size());      // Assign buffer index to token 
+				stVal.push(opt);
+				m_vStringBuf.push_back(opt.GetAsString()); // Store string in internal buffer
+				break;
+
+			case cmVAR:
+				stVal.push(opt);
+				curVar = static_cast<value_type*>(opt.GetVar());
+				if (mapIndex.find(curVar) == mapIndex.end()) {
+					mapIndex[curVar] = (int)paramlist.size();
+					paramlist.emplace_back(curVar);
+				}
+				m_vRPN.AddFuncVar(curVar, mapIndex[curVar]);
+				break;
+
+			case cmVAL:
+				stVal.push(opt);
+				m_vRPN.AddVal(opt.GetVal());
+				break;
+
+			case cmELSE:
+				if (stArgCount.empty())
+					Error(ecMISPLACED_COLON, m_pTokenReader->GetPos());
+
+				if (stArgCount.top() > 1)
+					Error(ecUNEXPECTED_ARG_SEP, m_pTokenReader->GetPos());
+
+				stArgCount.pop();
+
+				ifElseCounter--;
+				if (ifElseCounter < 0)
+					Error(ecMISPLACED_COLON, m_pTokenReader->GetPos());
+
+				ApplyRemainingOprt(stOpt, stVal);
+				m_vRPN.AddIfElse(cmELSE);
+				stOpt.push(opt);
+				break;
+
+			case cmARG_SEP:
+				if (!stOpt.empty() && stOpt.top().GetCode() == cmIF)
+					Error(ecUNEXPECTED_ARG_SEP, m_pTokenReader->GetPos());
+
+				if (stArgCount.empty())
+					Error(ecUNEXPECTED_ARG_SEP, m_pTokenReader->GetPos());
+
+				++stArgCount.top();
+				// Falls through.
+				// intentional (no break!)
+
+			case cmEND:
+				ApplyRemainingOprt(stOpt, stVal);
+				break;
+
+			case cmBC:
+			{
+				// The argument count for parameterless functions is zero
+				// by default an opening bracket sets parameter count to 1
+				// in preparation of arguments to come. If the last token
+				// was an opening bracket we know better...
+				if (opta.GetCode() == cmBO)
+					--stArgCount.top();
+
+				ApplyRemainingOprt(stOpt, stVal);
+
+				// Check if the bracket content has been evaluated completely
+				if (stOpt.size() && stOpt.top().GetCode() == cmBO)
+				{
+					// if opt is ")" and opta is "(" the bracket has been evaluated, now its time to check
+					// if there is either a function or a sign pending
+					// neither the opening nor the closing bracket will be pushed back to
+					// the operator stack
+					// Check if a function is standing in front of the opening bracket, 
+					// if yes evaluate it afterwards check for infix operators
+					MUP_ASSERT(stArgCount.size());
+					int iArgCount = stArgCount.top();
+					stArgCount.pop();
+
+					stOpt.pop(); // Take opening bracket from stack
+
+					if (iArgCount > 1 && (stOpt.size() == 0 ||
+						(stOpt.top().GetCode() != cmFUNC &&
+							stOpt.top().GetCode() != cmFUNC_BULK &&
+							stOpt.top().GetCode() != cmFUNC_STR)))
+						Error(ecUNEXPECTED_ARG, m_pTokenReader->GetPos());
+
+					// The opening bracket was popped from the stack now check if there
+					// was a function before this bracket
+					if (stOpt.size() &&
+						stOpt.top().GetCode() != cmOPRT_INFIX &&
+						stOpt.top().GetCode() != cmOPRT_BIN &&
+						stOpt.top().GetFuncAddr() != 0)
+					{
+						ApplyFunc(stOpt, stVal, iArgCount);
+					}
+				}
+			} // if bracket content is evaluated
+			break;
+
+			//
+			// Next are the binary operator entries
+			//
+			case cmIF:
+				ifElseCounter++;
+				stArgCount.push(1);
+				// Falls through.
+				// intentional (no break!)
+
+			case cmLAND:
+			case cmLOR:
+			case cmLT:
+			case cmGT:
+			case cmLE:
+			case cmGE:
+			case cmNEQ:
+			case cmEQ:
+			case cmADD:
+			case cmSUB:
+			case cmMUL:
+			case cmDIV:
+			case cmPOW:
+			case cmASSIGN:
+			case cmOPRT_BIN:
+
+				// A binary operator (user defined or built in) has been found. 
+				while (
+					stOpt.size() &&
+					stOpt.top().GetCode() != cmBO &&
+					stOpt.top().GetCode() != cmELSE &&
+					stOpt.top().GetCode() != cmIF)
+				{
+					int nPrec1 = GetOprtPrecedence(stOpt.top()),
+						nPrec2 = GetOprtPrecedence(opt);
+
+					if (stOpt.top().GetCode() == opt.GetCode())
+					{
+
+						// Deal with operator associativity
+						EOprtAssociativity eOprtAsct = GetOprtAssociativity(opt);
+						if ((eOprtAsct == oaRIGHT && (nPrec1 <= nPrec2)) ||
+							(eOprtAsct == oaLEFT && (nPrec1 < nPrec2)))
+						{
+							break;
+						}
+					}
+					else if (nPrec1 < nPrec2)
+					{
+						// In case the operators are not equal the precedence decides alone...
+						break;
+					}
+
+					if (stOpt.top().GetCode() == cmOPRT_INFIX)
+						ApplyFunc(stOpt, stVal, 1);
+					else
+						ApplyBinOprt(stOpt, stVal);
+				} // while ( ... )
+
+				if (opt.GetCode() == cmIF)
+					m_vRPN.AddIfElse(opt.GetCode());
+
+				// The operator can't be evaluated right now, push back to the operator stack
+				stOpt.push(opt);
+				break;
+
+				//
+				// Last section contains functions and operators implicitly mapped to functions
+				//
+			case cmBO:
+				stArgCount.push(1);
+				stOpt.push(opt);
+				break;
+
+			case cmOPRT_INFIX:
+			case cmFUNC:
+			case cmFUNC_BULK:
+			case cmFUNC_STR:
+				stOpt.push(opt);
+				break;
+
+			case cmOPRT_POSTFIX:
+				stOpt.push(opt);
+				ApplyFunc(stOpt, stVal, 1);  // this is the postfix operator
+				break;
+
+			default:  Error(ecINTERNAL_ERROR, 3);
+			} // end of switch operator-token
+
+			opta = opt;
+
+			if (opt.GetCode() == cmEND)
+			{
+				m_vRPN.Finalize();
+				break;
+			}
+
+			if (ParserBase::g_DbgDumpStack)
+			{
+				StackDump(stVal, stOpt);
+				m_vRPN.AsciiDump();
+			}
+
+			//			if (ParserBase::g_DbgDumpCmdCode)
+							//m_vRPN.AsciiDump();
+		} // while (true)
+
+		if (ParserBase::g_DbgDumpCmdCode)
+			m_vRPN.AsciiDump();
+
+		if (ifElseCounter > 0)
+			Error(ecMISSING_ELSE_CLAUSE);
+
+		// get the last value (= final result) from the stack
+		MUP_ASSERT(stArgCount.size() == 1);
+		m_nFinalResultIdx = stArgCount.top();
+		if (m_nFinalResultIdx == 0)
+			Error(ecINTERNAL_ERROR, 9);
+
+		if (stVal.size() == 0)
+			Error(ecEMPTY_EXPRESSION);
+
+		// 2020-09-17; fix for https://oss-fuzz.com/testcase-detail/5758791700971520
+		// I don't need the value stack any more. Destructively check if all values in the value 
+		// stack represent floating point values
+		while (stVal.size())
+		{
+			if (stVal.top().GetType() != tpDBL)
+				Error(ecSTR_RESULT);
+
+			stVal.pop();
+		}
+
+		m_vStackBuffer.resize(m_vRPN.GetMaxStackSize() * s_MaxNumOpenMPThreads);
+		//Quan modify
+		m_vRPN.GetFinalResultIdx() = m_nFinalResultIdx;
+		prAssign = -1;
+		return m_vRPN;
+	}
+
 	//---------------------------------------------------------------------------
 	void ParserBase::CreateRPN() const
 	{
@@ -1532,12 +1831,14 @@ namespace mu
 
 			if (m_vRPN.GetSize() == 2)
 			{
+				m_vRPN.StoreEnvironment(m_pTokenReader->GetExpr(), m_vStringBuf);
 				m_pParseFormula = &ParserBase::ParseCmdCodeShort;
 				m_vStackBuffer[1] = (this->*m_pParseFormula)();
 				return m_vStackBuffer[1];
 			}
 			else
 			{
+				m_vRPN.StoreEnvironment(m_pTokenReader->GetExpr(), m_vStringBuf);
 				m_pParseFormula = &ParserBase::ParseCmdCode;
 				return (this->*m_pParseFormula)();
 			}
@@ -1877,7 +2178,8 @@ namespace mu
 #endif
 		omp_set_num_threads(nMaxThreads);
 
-#pragma omp parallel for schedule(static, std::max(nBulkSize/nMaxThreads, 1)) private(nThreadID)
+		const int chunkSize = std::max(nBulkSize/nMaxThreads, 1);
+#pragma omp parallel for schedule(static, chunkSize) private(nThreadID)
 		for (i = 0; i < nBulkSize; ++i)
 		{
 			nThreadID = omp_get_thread_num();

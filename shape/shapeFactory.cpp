@@ -3,6 +3,7 @@
 // shape
 #include "shapeRectangle.h"
 #include "shapeCircle.h"
+#include "shapeCurve.h"
 #include "shapeEllipse.h"
 #include "shapeQuadrangle.h"
 #include "shapeSector.h"
@@ -17,10 +18,23 @@ ShapeFactory::ShapeFactory()
     : ShapeFactoryBase()
 {
 
-    QVector<QPair<QString, QVariant>> param_circle{{tr(SHAPE_CIRCLE_RADIUS), SHAPE_CIRCLE_RADIUS_DEFAULT_VALUE}};
+    QVector<QPair<QString, QVariant>> param_circle
+    {
+        {tr(SHAPE_CIRCLE_RADIUS), SHAPE_CIRCLE_RADIUS_DEFAULT_VALUE},
+        {tr(SHAPE_ROTATE), SHAPE_ROTATE_DEFAULT_VALUE}
+    };
     register_shape_decl(new ShapeDecl(tr(SHAPE_CIRCLE), "circle.png",
                                       param_circle,
-                                      new ShapeCircleFacotry()));
+                                      new ShapeCircleFactory()));
+
+    // 曲线是变参数类型的图形，因此需要额外特殊处理
+    QVector<QPair<QString, QVariant>> param_curve
+    {
+        {tr(SHAPE_ROTATE), SHAPE_ROTATE_DEFAULT_VALUE}
+    };
+    register_shape_decl(new ShapeDecl(tr(SHAPE_CURVE), "curve.png",
+                                      param_curve,
+                                      new ShapeCurveFactory(), true));
 
     QVector<QPair<QString, QVariant>> param_ellipse
     {
@@ -32,7 +46,7 @@ ShapeFactory::ShapeFactory()
     };
     register_shape_decl(new ShapeDecl(tr(SHAPE_ELLIPSE), "ellipse.png",
                                       param_ellipse,
-                                      new ShapeEllipseFacotry()));
+                                      new ShapeEllipseFactory()));
 
     // 多边形是变参数类型的图形，因此需要额外特殊处理
     QVector<QPair<QString, QVariant>> param_polygen
@@ -41,7 +55,7 @@ ShapeFactory::ShapeFactory()
     };
     register_shape_decl(new ShapeDecl(tr(SHAPE_POLYGEN), "polygen.png",
                                       param_polygen,
-                                      new ShapePolygenFacotry(), true));
+                                      new ShapePolygenFactory(), true));
 
 
     QVector<QPair<QString, QVariant>> param_quarangle
@@ -56,7 +70,7 @@ ShapeFactory::ShapeFactory()
     };
     register_shape_decl(new ShapeDecl(tr(SHAPE_QUADRANGLE), "quadrangle.png",
                                       param_quarangle,
-                                      new ShapeQuadrangleFacotry()));
+                                      new ShapeQuadrangleFactory()));
 
     QVector<QPair<QString, QVariant>> param_rectangle
     {
@@ -66,7 +80,7 @@ ShapeFactory::ShapeFactory()
     };
     register_shape_decl(new ShapeDecl(tr(SHAPE_RECTANGLE), "rectangle.png",
                                       param_rectangle,
-                                      new ShapeRectangleFacotry()));
+                                      new ShapeRectangleFactory()));
 
     QVector<QPair<QString, QVariant>> param_sector
     {
@@ -78,7 +92,7 @@ ShapeFactory::ShapeFactory()
     };
     register_shape_decl(new ShapeDecl(tr(SHAPE_SECTOR), "sector.png",
                                       param_sector,
-                                      new ShapSectoreFacotry()));
+                                      new ShapSectoreFactory()));
 
     QVector<QPair<QString, QVariant>> param_triangle
     {
@@ -88,7 +102,7 @@ ShapeFactory::ShapeFactory()
     };
     register_shape_decl(new ShapeDecl(tr(SHAPE_TRIANGLE), "triangle.png",
                                       param_triangle,
-                                      new ShapeTriangleFacotry()));
+                                      new ShapeTriangleFactory()));
 }
 
 ShapeFactory::~ShapeFactory()

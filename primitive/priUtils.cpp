@@ -3,11 +3,17 @@
 #include "attachTreeNodeMgr.h"
 #include "shapeDefines.h"
 
-#include <ShapeDrawGraphicsItem.h>
+#include <ShapeCurve.h>
 #include <priTreeWidgetItem.h>
 #include <viewport.h>
-#include "shapeBase.h"
+#include <viewport.h>
+#include "shapeUtils.h"
 #include "qpolygon.h"
+
+#include "common_Defines.h"
+#include "configManager.h"
+
+#include "ParamUtils.h"
 using namespace pr;
 
 bool PriUtils::is_x_coord_align(const QPointF &p_1, const QPointF &p_2)
@@ -114,6 +120,35 @@ QVector<pm::ParamDecl> pr::PriUtils::organize_and_eliminate_params(const QVector
     return result_params;
 }
 
+void pr::PriUtils::setup_polygon_extracted_param(int node_id, qreal default_value, pm::ParamDecl &param)
+{
+    const QString& param_key =  param.key(); // 示例输入字符串
+
+    // 使用正则表达式解析字符串
+    QRegularExpression regex("([xy])(\\d+)");
+    QRegularExpressionMatch match = regex.match(param_key);
+
+    if (!match.hasMatch())
+    {
+        return;
+    }
+    QString character = match.captured(1); // 提取字符 'x' 或 'y'
+    QString number_str = match.captured(2);
+    int number = number_str.toInt(); // 提取整数
+
+    if(number <= 0)
+    {
+        return;
+    }
+
+    QString node_id_str = QString::number(node_id);
+
+
+    QString exp = "N" + node_id_str + "d" + param_key;
+
+
+}
+
 void pr::PriUtils::classify_graphics_items(
     Primitive* pri,
     const QPointF &scene_pos,
@@ -135,15 +170,27 @@ void pr::PriUtils::classify_graphics_items(
 
             const QVector<QPointF> & attach_points = shape_item->shape_info()->attach_points();
             QPolygonF polygon;
-            if(tree_node->shape()->shape_type() == SHAPE_POLYGEN)
+            if(tree_node->shape_name() == SHAPE_POLYGEN)
             {
                 auto parent_attach_point = at::AttachTreeUtils::parent_attach_point_global_pos(tree_node);
                 polygon << parent_attach_point;
             }
-            for(auto idx = 0; idx < attach_points.size(); idx++)
+
+            if(shape_item->shape_name() != SHAPE_CURVE)
             {
-                auto attach_point = at::AttachTreeUtils::attach_point(tree_node, idx, true);
-                polygon << attach_point;
+                for(auto idx = 0; idx < attach_points.size(); idx++)
+                {
+                    auto attach_point = at::AttachTreeUtils::attach_point_coord(tree_node, idx, true);
+                    polygon << attach_point;
+                }
+            }
+            else
+            {
+                auto points = dynamic_cast<sp::ShapeCurve*>(shape_item->shape_info())->point_set();
+                for(auto point : points)
+                {
+                    polygon << at::AttachTreeUtils::point_coord(tree_node, point, true);
+                }
             }
 
             if(polygon.containsPoint(logic_pos, Qt::OddEvenFill))
@@ -217,4 +264,96 @@ void pr::PriUtils::classify_graphics_items(
     }
 
     return;
+}
+
+QPointF pr::PriUtils::closest_grid_point(const QPointF &point,  at::AttachTreeBaseNode* node, bool is_logic_pos)
+{
+    QPointF logic_pos = point;
+    if(!is_logic_pos)
+    {
+        logic_pos = node->tree_node_mgr()->viewport()->map_from_scene(point);
+    }
+
+    qreal res = cm::ConfigManager::instance()->query(CM_LOGIC_GRID_RESOLUTION_KEY).toDouble();
+
+    qreal adjusted_x = qRound(logic_pos.x() / res) * res;
+    qreal adjusted_y = qRound(logic_pos.y() / res) * res;
+    QPointF new_pos(adjusted_x, adjusted_y);
+    return new_pos;
+}
+
+void pr::PriUtils::modify_preview_polygen_by_points(const QVector<QPair<QPointF, sp::ShapePointGraphicsItem *> > &chosen_coord_points, Primitive* pri, QGraphicsPolygonItem &preview_polygen)
+{
+    if(chosen_coord_points.size() < 2)
+    {
+        preview_polygen.setVisible(false);
+        preview_polygen.update();
+    }
+
+    // 第一个点是父附着点
+    QPolygonF polygen;
+    auto root_point_item = sp::ShapePointGraphicsItem::cachedItem;
+    if(nullptr == root_point_item)
+    {
+        auto origin_point_pos = pri->tree_node_mgr()->viewport()->map_to_scene(QPointF(0, 0));
+        polygen << origin_point_pos;
+    }
+    else
+    {
+        polygen << root_point_item->pos();
+    }
+
+    for(auto pair : chosen_coord_points)
+    {
+        polygen << pair.second->pos();
+    }
+
+    preview_polygen.setPolygon(polygen);
+    preview_polygen.setVisible(true);
+    preview_polygen.update();
+}
+
+bool PriUtils::is_curve_equation_valid(const QString &str, pm::ParamMgr *param_mgr)
+{
+    // 先拆分成单个的点坐标
+    auto equation_strs = sp::ShapeUtils::split_string(str, "\n");
+    if(equation_strs.empty())
+    {
+        return false;
+    }
+
+    QVector<pm::ParamDecl> equation_params;
+    for(const auto& equation : equation_strs)
+    {
+        pm::ParamDecl param("", equation);
+        equation_params.append(param);
+    }
+    auto min_dist_threshold = cm::ConfigManager::instance()->query(CM_ARC_LEN_KEY).toDouble();
+    QVector<QPointF> equation_points = pm::ParamUtils::gen_curve_points(param_mgr, equation_params, min_dist_threshold);
+    if(equation_points.empty())
+    {
+        return false;
+    }
+
+    return true;
+}
+
+bool PriUtils::is_curve_fixed_point_set_valid(const QString &str, pm::ParamMgr *param_mgr)
+{
+    // 先拆分成单个的点坐标
+    auto point_coord_strs = sp::ShapeUtils::split_string(str, "\n");
+    if(point_coord_strs.empty())
+    {
+        return false;
+    }
+
+    for(const auto& point_coord : point_coord_strs)
+    {
+        bool is_point_coord = sp::ShapeUtils::is_point_coord(point_coord, param_mgr);
+        if(!is_point_coord)
+        {
+            return false;
+        }
+    }
+    return true;
 }

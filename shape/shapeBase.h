@@ -52,7 +52,10 @@ public:
 
     //graphic
     ShapeDrawGraphicsItem *shape_graphics_item() const;
+
     const QVector<ShapePointGraphicsItem*>& point_graphics_items() const;
+
+    void replace_graphics_items(ShapeBase* other_shape);
 
     void set_anchor_points(const QVector<QPointF>& points);
     QVector<QPointF> get_anchor_points();
@@ -63,6 +66,12 @@ public:
     void set_parent_attach_point(sp::ShapePointGraphicsItem* point_item);
     sp::ShapePointGraphicsItem* parent_attach_point() const;
 
+private:
+    void set_point_graphics_items(const QVector<ShapePointGraphicsItem*>& point_items);
+    void remove_point_graphics_items(); // HINT@leixunyong。对应内存需要托管给另外一个ShapeBase才能调用此接口。
+
+    void set_shape_graphics_item(ShapeDrawGraphicsItem* shape_item);
+    void remove_shape_item(); // HINT@leixunyong。对应内存需要托管给另外一个ShapeBase才能调用此接口。
 protected:
     virtual void update_variables();
     virtual void update_attach_pointes() = 0;
